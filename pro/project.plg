@@ -1,0 +1,378 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Project:</h2>
+C:\Users\hx\Desktop\esc32,144Ô´Âë\trunk\onboard\pro\project.uvproj
+Project File Date:  06/15/2013
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling stm32f10x_adc.c...
+..\lib\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+compiling stm32f10x_dbgmcu.c...
+..\lib\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+compiling stm32f10x_dma.c...
+..\lib\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+compiling stm32f10x_exti.c...
+..\lib\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+compiling stm32f10x_flash.c...
+..\lib\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+compiling stm32f10x_gpio.c...
+..\lib\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+Project build/rebuild aborted.
+Target not created
+Build target 'Target 1'
+compiling stm32f10x_adc.c...
+..\lib\stm32f10x_adc.c(182): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(223): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(302): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(327): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(357): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(382): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(396): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(420): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(434): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(460): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(485): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(514): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(539): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(594): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(689): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(711): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(737): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(763): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(803): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(827): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(852): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(877): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(934): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(998): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1030): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1057): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1086): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1111): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1149): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1170): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1199): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1231): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1252): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_adc.c(1287): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_dbgmcu.c...
+..\lib\stm32f10x_dbgmcu.c(137): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_dma.c...
+..\lib\stm32f10x_dma.c(111): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(207): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(297): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(329): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(356): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(374): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(439): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(526): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(601): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_dma.c(687): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_exti.c...
+..\lib\stm32f10x_exti.c(106): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_exti.c(174): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_exti.c(190): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_exti.c(212): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_exti.c(229): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_exti.c(252): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_flash.c...
+..\lib\stm32f10x_flash.c(259): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(284): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(303): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(423): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(687): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(862): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(933): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(982): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(1053): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(1123): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(1325): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(1402): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_flash.c(1462): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_gpio.c...
+..\lib\stm32f10x_gpio.c(111): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(178): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(286): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(308): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(324): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(346): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(361): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(377): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(397): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(420): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(437): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(466): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(486): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(554): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(613): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_gpio.c(632): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_iwdg.c...
+..\lib\stm32f10x_iwdg.c(95): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_iwdg.c(115): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_iwdg.c(128): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_iwdg.c(165): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_pwr.c...
+..\lib\stm32f10x_pwr.c(127): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_pwr.c(140): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_pwr.c(162): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_pwr.c(181): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_pwr.c(201): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_pwr.c(265): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_pwr.c(290): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_rcc.c...
+..\lib\stm32f10x_rcc.c(273): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(338): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(357): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(383): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(404): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(568): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(612): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(638): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(664): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(703): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(731): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(770): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(832): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(865): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(882): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(896): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1067): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1098): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1129): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1188): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1219): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1240): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1253): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1285): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1332): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1406): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_rcc.c(1451): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_tim.c...
+..\lib\stm32f10x_tim.c(125): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(231): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(284): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(367): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(449): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(528): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(590): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(659): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(715): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(809): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(834): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(875): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(912): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(940): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(967): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(992): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1011): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1039): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1080): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1121): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1153): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1179): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1203): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1233): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1272): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1319): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1343): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1367): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1391): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1412): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1436): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1461): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1486): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1513): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1538): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1562): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1586): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1610): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1636): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1661): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1686): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1711): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1737): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1761): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1785): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1809): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1832): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1856): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1879): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1903): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1927): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1951): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(1979): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2009): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2051): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2095): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2123): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2147): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2173): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2205): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2228): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2249): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2267): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2281): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2295): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2309): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2323): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2337): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2356): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2378): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2400): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2422): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2444): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2460): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2473): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2486): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2499): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2512): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2525): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2560): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2603): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2637): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_tim.c(2679): warning:  #223-D: function "assert_param" declared implicitly
+compiling stm32f10x_usart.c...
+..\lib\stm32f10x_usart.c(133): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(184): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(306): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(354): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(393): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(451): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(479): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(502): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(521): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(550): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(569): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(595): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(612): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(628): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(644): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(664): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(683): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(708): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(734): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(765): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(792): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(821): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(840): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(878): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(926): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(961): warning:  #223-D: function "assert_param" declared implicitly
+..\lib\stm32f10x_usart.c(1034): warning:  #223-D: function "assert_param" declared implicitly
+compiling system_stm32f10x.c...
+compiling adc.c...
+..\src\adc.c(82): warning:  #177-D: variable "i" was declared but never referenced
+..\src\adc.c(251): warning:  #161-D: unrecognized #pragma
+..\src\adc.c(258): error:  #1113: Inline assembler not permitted when generating Thumb code
+compiling binary.c...
+..\src\binary.h(82): warning:  #1-D: last line of file ends without a newline
+..\src\serial.h(52): warning:  #1295-D: Deprecated declaration serialAvailable - give arg types
+..\src\serial.h(53): warning:  #1295-D: Deprecated declaration serialRead - give arg types
+..\src\binary.c(98): warning:  #177-D: variable "c" was declared but never referenced
+..\src\binary.c(99): warning:  #177-D: variable "i" was declared but never referenced
+..\src\binary.c(438): warning:  #1-D: last line of file ends without a newline
+compiling cli.c...
+..\src\getbuildnum.h(4): warning:  #1295-D: Deprecated declaration getBuildNumber - give arg types
+..\src\getbuildnum.h(6): warning:  #1-D: last line of file ends without a newline
+..\src\serial.h(52): warning:  #1295-D: Deprecated declaration serialAvailable - give arg types
+..\src\serial.h(53): warning:  #1295-D: Deprecated declaration serialRead - give arg types
+..\src\cli.c(242): warning:  #181-D: argument is incompatible with corresponding format string conversion
+..\src\cli.c(264): warning:  #181-D: argument is incompatible with corresponding format string conversion
+..\src\cli.c(369): warning:  #177-D: variable "format" was declared but never referenced
+..\src\cli.c(514): error:  #28: expression must have a constant value
+compiling config.c...
+..\src\serial.h(52): warning:  #1295-D: Deprecated declaration serialAvailable - give arg types
+..\src\serial.h(53): warning:  #1295-D: Deprecated declaration serialRead - give arg types
+..\src\config.c(204): error:  #20: identifier "__float32_nan" is undefined
+compiling digital.c...
+..\src\digital.c(24): warning:  #177-D: variable "clock" was declared but never referenced
+compiling fet.c...
+..\src\fet.c(307): error:  #1113: Inline assembler not permitted when generating Thumb code
+compiling getbuildnum.c...
+..\src\getbuildnum.h(4): warning:  #1295-D: Deprecated declaration getBuildNumber - give arg types
+..\src\getbuildnum.h(6): warning:  #1-D: last line of file ends without a newline
+..\src\buildnum.h(1): warning:  #1-D: last line of file ends without a newline
+..\src\getbuildnum.c(6): warning:  #1-D: last line of file ends without a newline
+compiling main.c...
+..\src\serial.h(52): warning:  #1295-D: Deprecated declaration serialAvailable - give arg types
+..\src\serial.h(53): warning:  #1295-D: Deprecated declaration serialRead - give arg types
+..\src\ow.h(67): warning:  #1-D: last line of file ends without a newline
+..\src\main.c(41): warning:  #951-D: return type of function "main" must be "int"
+..\src\main.c(78): warning:  #144-D: a value of type "int *" cannot be used to initialize an entity of type "volatile unsigned int *"
+..\src\main.c(79): warning:  #144-D: a value of type "int *" cannot be used to initialize an entity of type "volatile unsigned int *"
+..\src\main.c(80): warning:  #144-D: a value of type "int *" cannot be used to initialize an entity of type "volatile unsigned int *"
+..\src\main.c(89): error:  #1113: Inline assembler not permitted when generating Thumb code
+compiling misc.c...
+..\src\misc.c(99): warning:  #223-D: function "assert_param" declared implicitly
+..\src\misc.c(117): warning:  #223-D: function "assert_param" declared implicitly
+..\src\misc.c(159): warning:  #223-D: function "assert_param" declared implicitly
+..\src\misc.c(178): warning:  #223-D: function "assert_param" declared implicitly
+..\src\misc.c(202): warning:  #223-D: function "assert_param" declared implicitly
+compiling ow.c...
+..\src\ow.h(67): warning:  #1-D: last line of file ends without a newline
+..\src\ow.c(146): warning:  #513-D: a value of type "char *" cannot be assigned to an entity of type "uint8_t *"
+..\src\ow.c(242): warning:  #186-D: pointless comparison of unsigned integer with zero
+..\src\ow.c(384): warning:  #1-D: last line of file ends without a newline
+compiling pwm.c...
+..\src\ow.h(67): warning:  #1-D: last line of file ends without a newline
+..\src\pwm.c(37): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(37): error:  #65: expected a ";"
+..\src\pwm.c(79): warning:  #12-D: parsing restarts here after previous syntax error
+..\src\pwm.c(80): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(80): error:  #65: expected a ";"
+..\src\pwm.c(81): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(81): error:  #65: expected a ";"
+..\src\pwm.c(82): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(82): error:  #65: expected a ";"
+..\src\pwm.c(83): error:  #79: expected a type specifier
+..\src\pwm.c(83): error:  #79: expected a type specifier
+..\src\pwm.c(83): warning:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(83): error:  #147: declaration is incompatible with "void TIM_TimeBaseInit(TIM_TypeDef *, TIM_TimeBaseInitTypeDef *)" (declared at line 1055 of "..\lib\stm32f10x_tim.h")
+..\src\pwm.c(85): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(85): error:  #65: expected a ";"
+..\src\pwm.c(86): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(86): error:  #65: expected a ";"
+..\src\pwm.c(87): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(87): error:  #65: expected a ";"
+..\src\pwm.c(88): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(88): error:  #65: expected a ";"
+..\src\pwm.c(89): error:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(89): error:  #65: expected a ";"
+..\src\pwm.c(90): error:  #79: expected a type specifier
+..\src\pwm.c(90): error:  #79: expected a type specifier
+..\src\pwm.c(90): warning:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(90): error:  #147: declaration is incompatible with "void TIM_PWMIConfig(TIM_TypeDef *, TIM_ICInitTypeDef *)" (declared at line 1061 of "..\lib\stm32f10x_tim.h")
+..\src\pwm.c(93): error:  #79: expected a type specifier
+..\src\pwm.c(93): error:  #79: expected a type specifier
+..\src\pwm.c(93): warning:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(93): error:  #147: declaration is incompatible with "void TIM_SelectInputTrigger(TIM_TypeDef *, uint16_t)" (declared at line 1085 of "..\lib\stm32f10x_tim.h")
+..\src\pwm.c(96): error:  #79: expected a type specifier
+..\src\pwm.c(96): error:  #79: expected a type specifier
+..\src\pwm.c(96): warning:  #77-D: this declaration has no storage class or type specifier
+..\src\pwm.c(96): error:  #147: declaration is incompatible with "void TIM_SelectSlaveMode(TIM_TypeDef *, uint16_t)" (declared at line 1123 of "..\lib\stm32f10x_tim.h")
+compiling rcc.c...
+..\src\rcc.c(53): error:  #1113: Inline assembler not permitted when generating Thumb code
+compiling run.c...
+..\src\binary.h(82): warning:  #1-D: last line of file ends without a newline
+..\src\run.c(65): warning:  #111-D: statement is unreachable
+..\src\run.c(239): error:  #1113: Inline assembler not permitted when generating Thumb code
+compiling serial.c...
+..\src\serial.h(52): warning:  #1295-D: Deprecated declaration serialAvailable - give arg types
+..\src\serial.h(53): warning:  #1295-D: Deprecated declaration serialRead - give arg types
+..\src\serial.c(88): error:  #20: identifier "GPIO_InitTypeDef" is undefined
+..\src\serial.c(101): error:  #20: identifier "GPIO_Pin_9" is undefined
+..\src\serial.c(101): error:  #20: identifier "GPIO_Pin_12" is undefined
+..\src\serial.c(102): error:  #20: identifier "GPIO_Speed_50MHz" is undefined
+..\src\serial.c(103): error:  #20: identifier "GPIO_Mode_AF_PP" is undefined
+..\src\serial.c(104): warning:  #223-D: function "GPIO_Init" declared implicitly
+..\src\serial.c(107): error:  #20: identifier "GPIO_Pin_10" is undefined
+..\src\serial.c(107): error:  #20: identifier "GPIO_Pin_11" is undefined
+..\src\serial.c(108): error:  #20: identifier "GPIO_Mode_IPU" is undefined
+..\src\serial.c(177): warning:  #1-D: last line of file ends without a newline
+compiling timer.c...
+Target not created
+Clean started: Project: 'project'
+   deleting intermediate output files for target 'Target 1'
