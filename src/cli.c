@@ -236,25 +236,26 @@ void cliFuncHelp(void *cmd, char *cmdLine) {
 }
 
 void cliFuncInput(void *cmd, char *cmdLine) {
-    char mode[sizeof cliInputModes[0]];
-    int i;
+	char mode[sizeof cliInputModes[0]];
+	int i;
 
-    if (sscanf(cmdLine, "%7s", &mode) != 1) {
-	cliUsage((cliCommand_t *)cmd);
-    }
-    else {
-	for (i = 0; i < (sizeof cliInputModes / sizeof cliInputModes[0]); i++) {
-	    if (!strncasecmp(cliInputModes[i], mode, 3))
-		break;
+	if (sscanf(cmdLine, "%7s", &mode) != 1) {
+		cliUsage((cliCommand_t *)cmd);
 	}
+	else 
+	{
+		for (i = 0; i < (sizeof cliInputModes / sizeof cliInputModes[0]); i++) {
+			if (!strncasecmp(cliInputModes[i], mode, 3))
+				break;
+		}
 
-	if (i < (sizeof cliInputModes / sizeof cliInputModes[0])) {
-	    cliFuncDisarm(cmd, cmdLine);
-	    cliFuncChangeInput(i);
+		if (i < (sizeof cliInputModes / sizeof cliInputModes[0])) {
+			cliFuncDisarm(cmd, cmdLine);
+			cliFuncChangeInput(i);
+		}
+		else
+			cliUsage((cliCommand_t *)cmd);
 	}
-	else
-	    cliUsage((cliCommand_t *)cmd);
-    }
 }
 
 void cliFuncMode(void *cmd, char *cmdLine) {
@@ -366,7 +367,6 @@ void cliPrintParam(int i) {
 
 void cliFuncSet(void *cmd, char *cmdLine) {
     char param[32];
-    const char *format = "%-20s = ";
     float value;
     int i;
 

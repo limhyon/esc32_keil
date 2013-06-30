@@ -55,7 +55,8 @@ void runFeedIWDG(void) {
 }
 
 // setup the hardware independent watchdog
-uint16_t runIWDGInit(int ms) {
+uint16_t runIWDGInit(int ms) 
+{
     uint16_t prevReloadVal;
     int reloadVal;
 
@@ -110,43 +111,43 @@ void runDisarm(int reason) {
 }
 
 void runArm(void) {
-    int i;
+	int i;
 
-    fetSetDutyCycle(0);
-    timerCancelAlarm2();
-    digitalHi(errorLed);
-    digitalLo(statusLed);   // turn on
+	fetSetDutyCycle(0);
+	timerCancelAlarm2();
+	digitalHi(errorLed);
+	digitalLo(statusLed);   // turn on
 
-    if (runMode == SERVO_MODE) {
-	state = ESC_STATE_RUNNING;
-    }
-    else {
-	state = ESC_STATE_STOPPED;
-	if (inputMode == ESC_INPUT_UART)
-	    runMode = OPEN_LOOP;
-	fetSetBraking(0);
-    }
+	if (runMode == SERVO_MODE) {
+		state = ESC_STATE_RUNNING;
+	}
+	else {
+		state = ESC_STATE_STOPPED;
+		if (inputMode == ESC_INPUT_UART)
+			runMode = OPEN_LOOP;
+		fetSetBraking(0);
+	}
 
-    // extra beeps signifying run mode
-    for (i = 0; i < runMode + 1; i++) {
-	fetBeep(250, 600);
-	timerDelay(10000);
-    }
+	// extra beeps signifying run mode
+	for (i = 0; i < runMode + 1; i++) {
+		fetBeep(250, 600);
+		timerDelay(10000);
+	}
 
 //    fetBeep(150, 800);
 }
 
 void runStart(void) {
-   // reset integral bevore new motor startup
-   runRpmPIDReset();
+	// reset integral bevore new motor startup
+	runRpmPIDReset();
 
-    if ((p[START_ALIGN_TIME] == 0) && (p[START_STEPS_NUM] == 0)) {
-	state = ESC_STATE_STARTING;
-	fetStartCommutation(0);
-    }
-    else {
-	motorStartSeqInit();
-    }
+	if ((p[START_ALIGN_TIME] == 0) && (p[START_STEPS_NUM] == 0)) {
+		state = ESC_STATE_STARTING;
+		fetStartCommutation(0);
+	}
+	else {
+		motorStartSeqInit();
+	}
 }
 
 void runStop(void) {
@@ -158,131 +159,136 @@ uint8_t runDuty(float duty) {
     uint8_t ret = 0;
 
     if (duty >= 0.0f || duty <= 100.0f) {
-	runMode = OPEN_LOOP;
-	fetSetBraking(0);
-	fetSetDutyCycle((uint16_t)(fetPeriod*duty*0.01f));
-	ret = 1;
+		runMode = OPEN_LOOP;
+		fetSetBraking(0);
+		fetSetDutyCycle((uint16_t)(fetPeriod*duty*0.01f));
+		ret = 1;
     }
 
     return ret;
 }
 
 void runNewInput(uint16_t setpoint) {
-    static uint16_t lastPwm;
-    static float filteredSetpoint = 0;
+	static uint16_t lastPwm;
+	static float filteredSetpoint = 0;
 
-    // Lowpass Input if configured
-    // TODO: Make lowpass independent from pwm update rate
-    if (p[PWM_LOWPASS]) {
-	filteredSetpoint = (p[PWM_LOWPASS] * filteredSetpoint + (float)setpoint) / (1.0f + p[PWM_LOWPASS]);
-	setpoint = filteredSetpoint;
-    }
-
-    if (state == ESC_STATE_RUNNING && setpoint != lastPwm) {
-	if (runMode == OPEN_LOOP) {
-	    fetSetDutyCycle(fetPeriod * (int32_t)(setpoint-pwmLoValue) / (int32_t)(pwmHiValue - pwmLoValue));
-	}
-	else if (runMode == CLOSED_LOOP_RPM) {
-	    float target = p[PWM_RPM_SCALE] * (setpoint-pwmLoValue) / (pwmHiValue - pwmLoValue);
-
-	    // limit to configured maximum
-	    targetRpm = (target > p[PWM_RPM_SCALE]) ? p[PWM_RPM_SCALE] : target;
-	}
-	// THRUST Mode
-	else if (runMode == CLOSED_LOOP_THRUST) {
-	    float targetThrust;  // desired trust
-	    float target;        // target(rpm)
-
-	    // Calculate targetThrust based on input and MAX_THRUST
-	    targetThrust = maxThrust * (setpoint-pwmLoValue) / (pwmHiValue - pwmLoValue);
-
-	    // Workaraound: Negative targetThrust will screw up sqrtf() and create MAX_RPM on throttle min. Dangerous!
-	    if (targetThrust > 0.0f) {
-	    	// Calculate target(rpm) based on targetThrust
-	    	target = ((sqrtf(p[THR1TERM] * p[THR1TERM] + 4.0f * p[THR2TERM] * targetThrust) - p[THR1TERM] ) / ( 2.0f * p[THR2TERM] ));
-	    }
-	    // targetThrust is negative (pwm_in < pwmLoValue)
-	    else {
-	    	target = 0.0f;
-	    }
-
-	    // upper limit for targetRpm is configured maximum PWM_RPM_SCALE (which is MAX_RPM)
-	    targetRpm = (target > p[PWM_RPM_SCALE]) ? p[PWM_RPM_SCALE] : target;
-	}
-	else if (runMode == SERVO_MODE) {
-	    fetSetAngleFromPwm(setpoint);
+	// Lowpass Input if configured
+	// TODO: Make lowpass independent from pwm update rate
+	if (p[PWM_LOWPASS]) {
+		filteredSetpoint = (p[PWM_LOWPASS] * filteredSetpoint + (float)setpoint) / (1.0f + p[PWM_LOWPASS]);
+		setpoint = filteredSetpoint;
 	}
 
-	lastPwm = setpoint;
-    }
-    else if ((state == ESC_STATE_NOCOMM || state == ESC_STATE_STARTING) && setpoint <= pwmLoValue) {
-	fetSetDutyCycle(0);
-	state = ESC_STATE_RUNNING;
-    }
-    else if (state == ESC_STATE_DISARMED && setpoint > pwmMinValue && setpoint <= pwmLoValue) {
-	runArmCount++;
-	if (runArmCount > RUN_ARM_COUNT)
-	    runArm();
-    }
-    else {
-	runArmCount = 0;
-    }
+	if (state == ESC_STATE_RUNNING && setpoint != lastPwm) 
+	{
+		if (runMode == OPEN_LOOP) {
+			fetSetDutyCycle(fetPeriod * (int32_t)(setpoint-pwmLoValue) / (int32_t)(pwmHiValue - pwmLoValue));
+		}
+		else if (runMode == CLOSED_LOOP_RPM) {
+			float target = p[PWM_RPM_SCALE] * (setpoint-pwmLoValue) / (pwmHiValue - pwmLoValue);
 
-    if (state == ESC_STATE_STOPPED && setpoint >= pwmMinStart) {
-	runStart();
-    }
+			// limit to configured maximum
+			targetRpm = (target > p[PWM_RPM_SCALE]) ? p[PWM_RPM_SCALE] : target;
+		}
+		// THRUST Mode
+		else if (runMode == CLOSED_LOOP_THRUST) {
+			float targetThrust;  // desired trust
+			float target;        // target(rpm)
+
+			// Calculate targetThrust based on input and MAX_THRUST
+			targetThrust = maxThrust * (setpoint-pwmLoValue) / (pwmHiValue - pwmLoValue);
+
+			// Workaraound: Negative targetThrust will screw up sqrtf() and create MAX_RPM on throttle min. Dangerous!
+			if (targetThrust > 0.0f) {
+				// Calculate target(rpm) based on targetThrust
+				target = ((sqrtf(p[THR1TERM] * p[THR1TERM] + 4.0f * p[THR2TERM] * targetThrust) - p[THR1TERM] ) / ( 2.0f * p[THR2TERM] ));
+			}
+			// targetThrust is negative (pwm_in < pwmLoValue)
+			else {
+				target = 0.0f;
+			}
+
+			// upper limit for targetRpm is configured maximum PWM_RPM_SCALE (which is MAX_RPM)
+			targetRpm = (target > p[PWM_RPM_SCALE]) ? p[PWM_RPM_SCALE] : target;
+		}
+		else if (runMode == SERVO_MODE) {
+			fetSetAngleFromPwm(setpoint);
+		}
+
+		lastPwm = setpoint;
+	}
+	else if ((state == ESC_STATE_NOCOMM || state == ESC_STATE_STARTING) && setpoint <= pwmLoValue) {
+		fetSetDutyCycle(0);
+		state = ESC_STATE_RUNNING;
+	}
+	else if (state == ESC_STATE_DISARMED && setpoint > pwmMinValue && setpoint <= pwmLoValue) {
+		runArmCount++;
+		if (runArmCount > RUN_ARM_COUNT)
+			runArm();
+	}
+	else {
+		runArmCount = 0;
+	}
+
+	if (state == ESC_STATE_STOPPED && setpoint >= pwmMinStart) {
+		runStart();
+	}
 }
 
 extern __asm void CPSID_I(void);
 extern __asm void CPSIE_I(void);
 
-void runWatchDog(void) {
-    register uint32_t t, d, p;
+void runWatchDog(void) 
+{
+	register uint32_t t, d, p;
 
-    //__asm volatile ("cpsid i");
+	//__asm volatile ("cpsid i");
 	CPSID_I();
-    t = timerMicros;
-    d = detectedCrossing;
-    p = pwmValidMicros;
-    //__asm volatile ("cpsie i");
+	t = timerMicros;
+	d = detectedCrossing;
+	p = pwmValidMicros;
+	//__asm volatile ("cpsie i");
 	CPSIE_I();
 
-    if (state == ESC_STATE_STARTING && fetGoodDetects > fetStartDetects) {
-	state = ESC_STATE_RUNNING;
-	digitalHi(statusLed);   // turn off
-    }
-    else if (state >= ESC_STATE_STOPPED) {   // running or starting
-	d = (t >= d) ? (t - d) : (TIMER_MASK - d + t);
+	if (state == ESC_STATE_STARTING && fetGoodDetects > fetStartDetects) 
+	{
+		state = ESC_STATE_RUNNING;
+		digitalHi(statusLed);   // turn off
+	}
+	else if (state >= ESC_STATE_STOPPED) 
+	{
+		// running or starting
+		d = (t >= d) ? (t - d) : (TIMER_MASK - d + t);
 
-	// timeout if PWM signal disappears
-	if (inputMode == ESC_INPUT_PWM) {
-	    p = (t >= p) ? (t - p) : (TIMER_MASK - p + t);
+		// timeout if PWM signal disappears
+		if (inputMode == ESC_INPUT_PWM) {
+			p = (t >= p) ? (t - p) : (TIMER_MASK - p + t);
 
-	    if (p > PWM_TIMEOUT)
-		runDisarm(REASON_PWM_TIMEOUT);
-	}
+			if (p > PWM_TIMEOUT)
+				runDisarm(REASON_PWM_TIMEOUT);
+		}
 
-	if (state >= ESC_STATE_STARTING && d > ADC_CROSSING_TIMEOUT) {
-	    if (fetDutyCycle > 0) {
-		runDisarm(REASON_CROSSING_TIMEOUT);
-	    }
-	    else {
-		runArm();
-		pwmIsrRunOn();
-	    }
+		if (state >= ESC_STATE_STARTING && d > ADC_CROSSING_TIMEOUT) {
+			if (fetDutyCycle > 0) {
+				runDisarm(REASON_CROSSING_TIMEOUT);
+			}
+			else {
+				runArm();
+				pwmIsrRunOn();
+			}
+		}
+		else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects) {
+			if (fetDutyCycle > 0)
+				runDisarm(REASON_BAD_DETECTS);
+		}
+		else if (state == ESC_STATE_STOPPED) {
+			adcAmpsOffset = adcAvgAmps;	// record current amperage offset
+		}
 	}
-	else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects) {
-	    if (fetDutyCycle > 0)
-		runDisarm(REASON_BAD_DETECTS);
+	else if (state == ESC_STATE_DISARMED && !(runMilis % 100)) {
+		adcAmpsOffset = adcAvgAmps;	// record current amperage offset
+		digitalTogg(errorLed);
 	}
-	else if (state == ESC_STATE_STOPPED) {
-	    adcAmpsOffset = adcAvgAmps;	// record current amperage offset
-	}
-    }
-    else if (state == ESC_STATE_DISARMED && !(runMilis % 100)) {
-	adcAmpsOffset = adcAvgAmps;	// record current amperage offset
-	digitalTogg(errorLed);
-    }
 }
 
 void runRpmPIDReset(void) {
@@ -290,76 +296,77 @@ void runRpmPIDReset(void) {
 }
 
 int32_t runRpmPID(float rpm, float target) {
-    float error;
-    float ff, rpmP, rpmD;
-    float iTerm = rpmI;
-    float output;
+	float error;
+	float ff, rpmP;
+	float iTerm = rpmI;
+	float output;
 
-    // feed forward
-    ff = ((target*target* p[FF1TERM] + target*p[FF2TERM]) / avgVolts) * fetPeriod;
+	// feed forward
+	ff = ((target*target* p[FF1TERM] + target*p[FF2TERM]) / avgVolts) * fetPeriod;
 
-    error = (target - rpm);
+	error = (target - rpm);
 
-    if (error > 1000.0f)
-	error = 1000.0f;
+	if (error > 1000.0f)
+		error = 1000.0f;
 
-    if (error > 0.0f) {
-	rpmP = error * p[PTERM];
-	rpmI += error * p[ITERM];
-    }
-    else {
-	rpmP =  error * p[PTERM] * p[PNFAC];
-	rpmI += error * p[ITERM] * p[INFAC];
-    }
-
-    if (fetBrakingEnabled) {
-	if (rpm < 300.0f) {
-	    fetSetBraking(0);
+	if (error > 0.0f) {
+		rpmP = error * p[PTERM];
+		rpmI += error * p[ITERM];
 	}
-	else if (error <= -100.0f) {
-	    fetSetBraking(1);
+	else {
+		rpmP =  error * p[PTERM] * p[PNFAC];
+		rpmI += error * p[ITERM] * p[INFAC];
 	}
-	else if (fetBraking && error > -25.0f){
-	    fetSetBraking(0);
+
+	if (fetBrakingEnabled) 
+	{
+		if (rpm < 300.0f) {
+			fetSetBraking(0);
+		}
+		else if (error <= -100.0f) {
+			fetSetBraking(1);
+		}
+		else if (fetBraking && error > -25.0f){
+			fetSetBraking(0);
+		}
 	}
-    }
 
-    output = ff + (rpmP + rpmI) * (1.0f / 1500.0f) * fetPeriod;
+	output = ff + (rpmP + rpmI) * (1.0f / 1500.0f) * fetPeriod;
 
-    // don't allow integral to continue to rise if at max output
-    if (output >= fetPeriod)
-	rpmI = iTerm;
+	// don't allow integral to continue to rise if at max output
+	if (output >= fetPeriod)
+		rpmI = iTerm;
 
-    return output;
+	return output;
 }
 
 uint8_t runRpm(void) {
-    if (state > ESC_STATE_STARTING) {
-//	rpm = rpm * 0.90f + (runRPMFactor / (float)crossingPeriod) * 0.10f;
-//	rpm -= (rpm - (runRPMFactor / (float)crossingPeriod)) * 0.25f;
-//	rpm = (rpm + (runRPMFactor / (float)crossingPeriod)) * 0.5f;
-//	rpm = (rpm + ((32768.0f * runRPMFactor) / (float)adcCrossingPeriod)) * 0.5f; // increased resolution, fixed filter here
-	rpm = p[RPM_MEAS_LP] * rpm + ((32768.0f * runRPMFactor) / (float)adcCrossingPeriod) * (1.0f - p[RPM_MEAS_LP]); // increased resolution, variable filter here
+    if (state > ESC_STATE_STARTING) 
+	{
+		//	rpm = rpm * 0.90f + (runRPMFactor / (float)crossingPeriod) * 0.10f;
+		//	rpm -= (rpm - (runRPMFactor / (float)crossingPeriod)) * 0.25f;
+		//	rpm = (rpm + (runRPMFactor / (float)crossingPeriod)) * 0.5f;
+		//	rpm = (rpm + ((32768.0f * runRPMFactor) / (float)adcCrossingPeriod)) * 0.5f; // increased resolution, fixed filter here
+		rpm = p[RPM_MEAS_LP] * rpm + ((32768.0f * runRPMFactor) / (float)adcCrossingPeriod) * (1.0f - p[RPM_MEAS_LP]); // increased resolution, variable filter here
 
-	// run closed loop control
-	if (runMode == CLOSED_LOOP_RPM) {
-	    fetSetDutyCycle(runRpmPID(rpm, targetRpm));
-	    return 1;
+		// run closed loop control
+		if (runMode == CLOSED_LOOP_RPM) {
+			fetSetDutyCycle(runRpmPID(rpm, targetRpm));
+			return 1;
+		}
+		// run closed loop control also for THRUST mode
+		else if (runMode == CLOSED_LOOP_THRUST) {
+			fetSetDutyCycle(runRpmPID(rpm, targetRpm));
+			return 1;
+		}
+		else {
+			return 0;
+		}
 	}
-
-	// run closed loop control also for THRUST mode
-	else if (runMode == CLOSED_LOOP_THRUST) {
-	    fetSetDutyCycle(runRpmPID(rpm, targetRpm));
-	    return 1;
-	}
-
-	else {
-	    return 0;
-	}
-    }
-    else {
-	rpm = 0.0f;
-	return 0;
+	else 
+	{
+		rpm = 0.0f;
+		return 0;
     }
 }
 
@@ -410,23 +417,22 @@ float currentIState;
 int32_t runCurrentPID(int32_t duty) {
     float error;
     float pTerm, iTerm;
-    float out;
 
     error = avgAmps - p[MAX_CURRENT];
 
     currentIState += error;
     if (currentIState < 0.0f)
-	currentIState = 0.0f;
+		currentIState = 0.0f;
     iTerm = currentIState * RUN_CURRENT_ITERM;
 
     pTerm = error * RUN_CURRENT_PTERM;
     if (pTerm < 0.0f)
-	pTerm = 0.0f;
+		pTerm = 0.0f;
 
     duty = duty - iTerm - pTerm;
 
     if (duty < 0)
-	duty = 0;
+		duty = 0;
 
     return duty;
 }
@@ -456,7 +462,7 @@ void runThrotLim(int32_t duty) {
 	}
     }
     else {
-	fetActualDutyCycle = duty;
+		fetActualDutyCycle = duty;
     }
 
     _fetSetDutyCycle(fetActualDutyCycle);
@@ -497,14 +503,14 @@ void SysTick_Handler(void) {
 void PVD_IRQHandler(void) {
     // voltage dropping too low
     if (EXTI_GetITStatus(EXTI_Line16) != RESET) {
-	// shut everything down
-	runDisarm(REASON_LOW_VOLTAGE);
+		// shut everything down
+		runDisarm(REASON_LOW_VOLTAGE);
 
-	// turn on both LEDs
-	digitalLo(statusLed);
-	digitalLo(errorLed);
+		// turn on both LEDs
+		digitalLo(statusLed);
+		digitalLo(errorLed);
 
-	EXTI_ClearITPendingBit(EXTI_Line16);
+		EXTI_ClearITPendingBit(EXTI_Line16);
     }
 }
 
@@ -513,12 +519,12 @@ void runSetConstants(void) {
     float maxCurrent = p[MAX_CURRENT];
 
     if (startupMode < 0 || startupMode >= NUM_RUN_MODES)
-	startupMode = 0;
+		startupMode = 0;
 
     if (maxCurrent > RUN_MAX_MAX_CURRENT)
-	maxCurrent = RUN_MAX_MAX_CURRENT;
+		maxCurrent = RUN_MAX_MAX_CURRENT;
     else if (maxCurrent < RUN_MIN_MAX_CURRENT)
-	maxCurrent = RUN_MIN_MAX_CURRENT;
+		maxCurrent = RUN_MIN_MAX_CURRENT;
 
     runRPMFactor = (1e6f * (float)TIMER_MULT * 120.0f) / (p[MOTOR_POLES] * 6.0f);
     maxCurrentSQRT = sqrtf(maxCurrent);

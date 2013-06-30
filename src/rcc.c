@@ -45,7 +45,7 @@ static __asm void rcc_asm(void)
 	BX      R0
 }
 
-void rccBootLoader(void) 
+static void rccBootLoader(void) 
 {
     // check for magic cookie
     if (rccReadBkpDr() == 0xDECEA5ED)

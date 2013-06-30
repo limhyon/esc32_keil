@@ -34,74 +34,74 @@ digitalPin *tp;
 #endif
 
 volatile uint32_t minCycles, idleCounter, totalCycles;
+//                最小周期                总共周期
 volatile uint8_t state, inputMode;
 __asm void nop(void);
 
-char buf[64];
-
-void main(void) 
+int main(void) 
 {
-    rccInit();
-    timerInit();
-    configInit();
-    adcInit();
-    fetInit();
-    serialInit();
-    runInit();
-    cliInit();
-    owInit();
+	rccInit();     //开启CPU默认的一些时钟等
+	timerInit();   //timer2内部计数器
+	configInit();  //加载默认的配置
 
-    runDisarm(REASON_STARTUP);
-    inputMode = ESC_INPUT_PWM;
+	adcInit();     //ADC采样配置
+	fetInit();
+	serialInit();  //串口初始化
+	runInit();
+	cliInit();
+	owInit();
 
-    fetSetDutyCycle(0);
-    fetBeep(200, 100);
-    fetBeep(300, 100);
-    fetBeep(400, 100);
-    fetBeep(500, 100);
-    fetBeep(400, 100);
-    fetBeep(300, 100);
-    fetBeep(200, 100);
+	runDisarm(REASON_STARTUP);
+	inputMode = ESC_INPUT_PWM;
 
-    pwmInit();
+	fetSetDutyCycle(0);
+	fetBeep(200, 100);
+	fetBeep(300, 100);
+	fetBeep(400, 100);
+	fetBeep(500, 100);
+	fetBeep(400, 100);
+	fetBeep(300, 100);
+	fetBeep(200, 100);
 
-    statusLed = digitalInit(GPIO_STATUS_LED_PORT, GPIO_STATUS_LED_PIN);
-    digitalHi(statusLed);
-    errorLed = digitalInit(GPIO_ERROR_LED_PORT, GPIO_ERROR_LED_PIN);
-    digitalHi(errorLed);
+	pwmInit();
+
+	statusLed = digitalInit(GPIO_STATUS_LED_PORT, GPIO_STATUS_LED_PIN);
+	digitalHi(statusLed);
+	errorLed = digitalInit(GPIO_ERROR_LED_PORT, GPIO_ERROR_LED_PIN);
+	digitalHi(errorLed);
 #ifdef ESC_DEBUG
-    tp = digitalInit(GPIO_TP_PORT, GPIO_TP_PIN);
-    digitalLo(tp);
+	tp = digitalInit(GPIO_TP_PORT, GPIO_TP_PIN);
+	digitalLo(tp);
 #endif
 
-    // self calibrating idle timer loop
-    {
-        volatile unsigned long cycles;
-        volatile unsigned int *DWT_CYCCNT = (int *)0xE0001004;//当前PC采样器周期计数寄存器
-        volatile unsigned int *DWT_CONTROL = (int *)0xE0001000;
-        volatile unsigned int *SCB_DEMCR = (int *)0xE000EDFC;
+	// self calibrating idle timer loop
+	{
+		volatile unsigned long cycles;
+		volatile unsigned int *DWT_CYCCNT  = (volatile unsigned int *)0xE0001004;//当前PC采样器周期计数寄存器
+		volatile unsigned int *DWT_CONTROL = (volatile unsigned int *)0xE0001000;
+		volatile unsigned int *SCB_DEMCR   = (volatile unsigned int *)0xE000EDFC;
 
-        *SCB_DEMCR = *SCB_DEMCR | 0x01000000;
-        *DWT_CONTROL = *DWT_CONTROL | 1;	// enable the counter
+		*SCB_DEMCR = *SCB_DEMCR | 0x01000000;
+		*DWT_CONTROL = *DWT_CONTROL | 1;	// enable the counter
 
 		minCycles = 0xffff;
 
 		while (1) 
 		{
-            idleCounter++;
+			idleCounter++;
 
 			//NOPS_4;
 			nop();nop();nop();nop();
 
-            cycles = *DWT_CYCCNT;
-            *DWT_CYCCNT = 0;		    // reset the counter
+			cycles = *DWT_CYCCNT;
+			*DWT_CYCCNT = 0;		    // reset the counter
 
-            // record shortest number of instructions for loop
+			// record shortest number of instructions for loop
 			totalCycles += cycles;
-            if (cycles < minCycles)
-                minCycles = cycles;
-        }
-    }
+			if (cycles < minCycles)
+				minCycles = cycles;
+		}
+	}
 }
 
 #ifdef USE_FULL_ASSERT

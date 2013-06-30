@@ -1,6 +1,6 @@
 #include "getbuildnum.h"
 #include "buildnum.h"
 
-unsigned getBuildNumber() {
+unsigned getBuildNumber(void) {
   return BUILDNUMBER;
 }

@@ -50,8 +50,8 @@ typedef struct {
 extern void serialInit(void);
 extern void serialWrite(int ch);
 extern void serialPrint(const char *str);
-extern unsigned char serialAvailable();
-extern int serialRead();
+extern unsigned char serialAvailable(void);
+extern int serialRead(void);
 extern void serialSetConstants(void);
 
 

@@ -139,7 +139,7 @@ void configInit(void) {
     ver = *(float *)FLASH_WRITE_ADDR;
 
     if (isnan(ver))
-		configWriteFlash();
+		configWriteFlash();//配置写入flash
     else if (ver >= p[CONFIG_VERSION])
 		configReadFlash();
     else if (p[CONFIG_VERSION] > ver)
@@ -147,7 +147,8 @@ void configInit(void) {
 }
 
 // recalculate constants with bounds checking
-void configRecalcConst(void) {
+//做参数边界的检查
+static void configRecalcConst(void) {
     adcSetConstants();
     fetSetConstants();
     runSetConstants();
@@ -159,10 +160,10 @@ int configSetParamByID(int i, float value) {
     int ret = 0;
 
     if (i >= 0 && i < CONFIG_NUM_PARAMS) {
-	p[i] = value;
-	configRecalcConst();
+		p[i] = value;
+		configRecalcConst();
 
-	ret = 1;
+		ret = 1;
     }
 
     return ret;
@@ -173,11 +174,11 @@ int configSetParam(char *param, float value) {
     int i;
 
     for (i = 0; i < CONFIG_NUM_PARAMS; i++) {
-	if (!strncasecmp(configParameterStrings[i], param, strlen(configParameterStrings[i]))) {
-	    configSetParamByID(i, value);
-	    ret = 1;
-	    break;
-	}
+		if (!strncasecmp(configParameterStrings[i], param, strlen(configParameterStrings[i]))) {
+			configSetParamByID(i, value);
+			ret = 1;
+			break;
+		}
     }
 
     return ret;
@@ -193,6 +194,7 @@ int configGetId(char *param) {
     return -1;
 }
 
+#if 0//这个函数没有调用
 float configGetParam(char *param) {
     int i;
 
@@ -204,11 +206,12 @@ float configGetParam(char *param) {
 	//return __float32_nan;
 	return 0;//AXian 找不到__float32_nan这个变量.先这么定义了
 }
+#endif
 
 void configLoadDefault(void) {
     p[CONFIG_VERSION] = DEFAULT_CONFIG_VERSION;
     p[STARTUP_MODE] = DEFAULT_STARTUP_MODE;
-    p[BAUD_RATE] = DEFAULT_BAUD_RATE;
+    p[BAUD_RATE] = DEFAULT_BAUD_RATE;                    //串口默认波特率
     p[PTERM] = DEFAULT_PTERM;
     p[ITERM] = DEFAULT_ITERM;
     p[FF1TERM] = DEFAULT_FF1TERM;
@@ -258,6 +261,7 @@ void configLoadDefault(void) {
     configRecalcConst();
 }
 
+//将配置文件写入flash
 int configWriteFlash(void) 
 {
     uint16_t prevReloadVal;

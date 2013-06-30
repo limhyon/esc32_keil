@@ -143,7 +143,7 @@ void owReadComplete(void) {
 
 	case OW_VERSION:
 	    owState = OW_WRITE;
-	    owBufPointer = version;
+	    owBufPointer = (uint8_t *)version;
 	    owWriteBytes(sizeof(version));
 	break;
 
@@ -238,14 +238,14 @@ void owReadComplete(void) {
 		owReadBytes(1);
 	    }
 	    else {
-		owLastCommand = 0x00;
-		if (owBuf[1] >= 0 && owBuf[1] < NUM_RUN_MODES) {
-		    runMode = owBuf[1];
+			owLastCommand = 0x00;
+			if (owBuf[1] >= 0 && owBuf[1] < NUM_RUN_MODES) {
+				runMode = owBuf[1];
 
-		    owState = OW_WRITE;
-		    owBufPointer = owBuf;
-		    owWriteBytes(2);
-		}
+				owState = OW_WRITE;
+				owBufPointer = owBuf;
+				owWriteBytes(2);
+			}
 	    }
 	    ;
 	break;

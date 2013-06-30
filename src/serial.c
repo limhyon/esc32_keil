@@ -25,22 +25,24 @@
 
 serialPort_t serialPort;
 
+//启动串口发送DMA 将串口发送缓冲区的内容使用DMA发送
 void serialStartTxDMA() {
     serialPort_t *s = &serialPort;
 
     SERIAL_TX_DMA->CMAR = (uint32_t)&s->txBuf[s->txTail];
     if (s->txHead > s->txTail) {
-	SERIAL_TX_DMA->CNDTR = s->txHead - s->txTail;
-	s->txTail = s->txHead;
+		SERIAL_TX_DMA->CNDTR = s->txHead - s->txTail;
+		s->txTail = s->txHead;
     }
     else {
-	SERIAL_TX_DMA->CNDTR = SERIAL_TX_BUFSIZE - s->txTail;
-	s->txTail = 0;
+		SERIAL_TX_DMA->CNDTR = SERIAL_TX_BUFSIZE - s->txTail;
+		s->txTail = 0;
     }
 
     DMA_Cmd(SERIAL_TX_DMA, ENABLE);
 }
 
+//将要发送的内容写入串口发送缓冲区
 void serialWrite(int ch) {
     serialPort_t *s = &serialPort;
 
@@ -48,31 +50,34 @@ void serialWrite(int ch) {
     s->txHead = (s->txHead + 1) % SERIAL_TX_BUFSIZE;
 
     if (!(SERIAL_TX_DMA->CCR & 1))
-	serialStartTxDMA();
+		serialStartTxDMA();
 }
 
-unsigned char serialAvailable() {
+//判断是否有收到有效的数据
+unsigned char serialAvailable(void) {
     return (SERIAL_RX_DMA->CNDTR != serialPort.rxPos);
 }
 
 // only call after a affirmative return from serialAvailable()
-int serialRead() {
+//从串口缓冲区中读取数据
+int serialRead(void) {
     serialPort_t *s = &serialPort;
     int ch;
 
     ch = s->rxBuf[SERIAL_RX_BUFSIZE - s->rxPos];
     if (--s->rxPos == 0)
-	s->rxPos = SERIAL_RX_BUFSIZE;
+		s->rxPos = SERIAL_RX_BUFSIZE;
 
     return ch;
 }
 
+//串口打印字符串
 void serialPrint(const char *str) {
     while (*str)
-	serialWrite(*(str++));
+		serialWrite(*(str++));
 }
 
-void serialOpenPort(int baud) {
+static void serialOpenPort(int baud) {
     USART_InitTypeDef USART_InitStructure;
 
     USART_InitStructure.USART_BaudRate = baud;
@@ -120,7 +125,7 @@ void serialInit(void) {
 
     serialOpenPort(p[BAUD_RATE]);
 
-    // Configure DMA for rx
+    // Configure DMA for rx  配置接收
     DMA_DeInit(SERIAL_RX_DMA);
     DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)SERIAL_UART + 0x04;
     DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)s->rxBuf;
@@ -138,7 +143,7 @@ void serialInit(void) {
     USART_DMACmd(SERIAL_UART, USART_DMAReq_Rx, ENABLE);
     s->rxPos = DMA_GetCurrDataCounter(SERIAL_RX_DMA);
 
-    // Configure DMA for tx
+    // Configure DMA for tx  配置发送
     DMA_DeInit(SERIAL_TX_DMA);
     DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)SERIAL_UART + 0x04;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
@@ -156,22 +161,23 @@ void serialInit(void) {
     USART_Cmd(SERIAL_UART, ENABLE);
 }
 
-// USART tx DMA IRQ
+// USART tx DMA IRQ  发送DMA完成中断
 void DMA1_Channel4_IRQHandler(void) {
     DMA_ClearITPendingBit(DMA1_IT_TC4);
     DMA_Cmd(SERIAL_TX_DMA, DISABLE);
 
-    if (serialPort.txHead != serialPort.txTail)
-	serialStartTxDMA();
+    if (serialPort.txHead != serialPort.txTail)//判断是否有数据要发送出去
+		serialStartTxDMA();
 }
 
+//串口波特率.做边界检查
 void serialSetConstants(void) {
     p[BAUD_RATE] = (int)p[BAUD_RATE];
 
     if (p[BAUD_RATE] < SERIAL_MIN_BAUD)
-	p[BAUD_RATE] = SERIAL_MIN_BAUD;
+		p[BAUD_RATE] = SERIAL_MIN_BAUD;
     else if (p[BAUD_RATE] > SERIAL_MAX_BAUD)
-	p[BAUD_RATE] = SERIAL_MAX_BAUD;
+		p[BAUD_RATE] = SERIAL_MAX_BAUD;
 
     serialOpenPort(p[BAUD_RATE]);
 }

@@ -42,6 +42,7 @@ uint32_t timerGetMicros(void) {
     return timerMicros;
 }
 
+//使用timer2做延时
 void timerDelay(uint16_t us) {
     uint16_t cnt = TIMER_TIM->CNT;
     uint16_t targetTimerVal = cnt + us*TIMER_MULT;
@@ -86,7 +87,6 @@ void timerInit(void)
     TIM_OCInitTypeDef  TIM_OCInitStructure;
 
     // Enable the TIMER_TIM global Interrupt
-	//开中断
     NVIC_InitStructure.NVIC_IRQChannel = TIMER_IRQ_CH;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -94,10 +94,10 @@ void timerInit(void)
     NVIC_Init(&NVIC_InitStructure);
 
     // Time base configuration
-    TIM_TimeBaseStructure.TIM_Prescaler = (72/TIMER_MULT) - 1;
-    TIM_TimeBaseStructure.TIM_Period = 0xFFFF;
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseStructure.TIM_Prescaler = (72/TIMER_MULT) - 1;   //分频
+    TIM_TimeBaseStructure.TIM_Period = 0xFFFF;                   //自动重载寄存器
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0;                 //分频
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //向上计数
     TIM_TimeBaseInit(TIMER_TIM, &TIM_TimeBaseStructure);
 
 	//取消1 2 3路 比较中断
@@ -120,94 +120,109 @@ void timerInit(void)
     TIM_OC3Init(TIMER_TIM, &TIM_OCInitStructure);
     TIM_OC3PreloadConfig(TIMER_TIM, TIM_OCPreload_Disable);
 
-    TIM_ARRPreloadConfig(TIMER_TIM, ENABLE);
+    TIM_ARRPreloadConfig(TIMER_TIM, ENABLE);//ARR有缓冲器
 
     // go...
-    TIM_Cmd(TIMER_TIM, ENABLE);
+    TIM_Cmd(TIMER_TIM, ENABLE);//开启计数器
 }
 
+
+
+
 // TODO: worry about 32 bit rollover
+//参数：
+// ticks：要调用callback函数的相对时间
+// callback：要调用的函数
+// parameter：要调用函数的参数
 void timerSetAlarm1(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
-    if (ticks <= TIMER_MULT) {
-	// Disable the Interrupt
-	TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC1;
+    if (ticks <= TIMER_MULT) 
+	{
+		//小于2个ticks.直接调用
+		// Disable the Interrupt
+		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC1;
 
-	callback(parameter);
+		callback(parameter);
     }
     // otherwise, schedule it
     else {
-	timerData.alarm1Callback = callback;
-	timerData.alarm1Parameter = parameter;
+		timerData.alarm1Callback = callback;
+		timerData.alarm1Parameter = parameter;
 
-	TIMER_TIM->CCR1 = TIMER_TIM->CNT + ticks;
-	TIMER_TIM->SR = (uint16_t)~TIM_IT_CC1;
+		TIMER_TIM->CCR1 = TIMER_TIM->CNT + ticks;//设备捕获比较中断寄存器
+		TIMER_TIM->SR = (uint16_t)~TIM_IT_CC1;
 
-	TIMER_TIM->DIER |= TIM_IT_CC1;
+		TIMER_TIM->DIER |= TIM_IT_CC1;//开中断
     }
 }
 
 void timerSetAlarm2(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
     if (ticks <= TIMER_MULT) {
-	// Disable the Interrupt
-	TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC2;
+		// Disable the Interrupt
+		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC2;
 
-	callback(parameter);
+		callback(parameter);
     }
     // otherwise, schedule it
     else {
-	timerData.alarm2Callback = callback;
-	timerData.alarm2Parameter = parameter;
+		timerData.alarm2Callback = callback;
+		timerData.alarm2Parameter = parameter;
 
-	TIMER_TIM->CCR2 = TIMER_TIM->CNT + ticks;
-	TIMER_TIM->SR = (uint16_t)~TIM_IT_CC2;
-	TIMER_TIM->DIER |= TIM_IT_CC2;
+		TIMER_TIM->CCR2 = TIMER_TIM->CNT + ticks;
+		TIMER_TIM->SR = (uint16_t)~TIM_IT_CC2;
+		TIMER_TIM->DIER |= TIM_IT_CC2;
     }
 }
 
 void timerSetAlarm3(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
     if (ticks <= TIMER_MULT) {
-	// Disable the Interrupt
-	TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC3;
+		// Disable the Interrupt
+		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC3;
 
-	callback(parameter);
+		callback(parameter);
     }
     // otherwise, schedule it
     else {
-	timerData.alarm3Callback = callback;
-	timerData.alarm3Parameter = parameter;
+		timerData.alarm3Callback = callback;
+		timerData.alarm3Parameter = parameter;
 
-	TIMER_TIM->CCR3 = TIMER_TIM->CNT + ticks;
-	TIMER_TIM->SR = (uint16_t)~TIM_IT_CC3;
-	TIMER_TIM->DIER |= TIM_IT_CC3;
+		TIMER_TIM->CCR3 = TIMER_TIM->CNT + ticks;
+		TIMER_TIM->SR = (uint16_t)~TIM_IT_CC3;
+		TIMER_TIM->DIER |= TIM_IT_CC3;
     }
 }
 
-void TIMER_ISR(void) {
-    if (TIM_GetITStatus(TIMER_TIM, TIM_IT_CC1) != RESET) {
-	TIMER_TIM->SR = (uint16_t)~TIM_IT_CC1;
+//timer2 中断
+void TIMER_ISR(void) 
+{
+    if (TIM_GetITStatus(TIMER_TIM, TIM_IT_CC1) != RESET) 
+	{
+		//判断第1路比较中断
+		TIMER_TIM->SR = (uint16_t)~TIM_IT_CC1;
 
-	// Disable the Interrupt
-	TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC1;
+		// Disable the Interrupt
+		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC1;
 
-	timerData.alarm1Callback(timerData.alarm1Parameter);
+		timerData.alarm1Callback(timerData.alarm1Parameter);
     }
-    else if (TIM_GetITStatus(TIMER_TIM, TIM_IT_CC2) != RESET) {
-	TIMER_TIM->SR = (uint16_t)~TIM_IT_CC2;
+    else if (TIM_GetITStatus(TIMER_TIM, TIM_IT_CC2) != RESET) 
+	{
+		TIMER_TIM->SR = (uint16_t)~TIM_IT_CC2;
 
-	// Disable the Interrupt
-	TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC2;
+		// Disable the Interrupt
+		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC2;
 
-	timerData.alarm2Callback(timerData.alarm2Parameter);
+		timerData.alarm2Callback(timerData.alarm2Parameter);
     }
-    else if (TIM_GetITStatus(TIMER_TIM, TIM_IT_CC3) != RESET) {
-	TIMER_TIM->SR = (uint16_t)~TIM_IT_CC3;
+    else if (TIM_GetITStatus(TIMER_TIM, TIM_IT_CC3) != RESET) 
+	{
+		TIMER_TIM->SR = (uint16_t)~TIM_IT_CC3;
 
-	// Disable the Interrupt
-	TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC3;
+		// Disable the Interrupt
+		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC3;
 
-	timerData.alarm3Callback(timerData.alarm3Parameter);
+		timerData.alarm3Callback(timerData.alarm3Parameter);
     }
 }

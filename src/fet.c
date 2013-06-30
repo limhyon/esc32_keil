@@ -446,7 +446,6 @@ void fetSetBaseTime(int32_t period) {
 void fetInit(void) {
     GPIO_InitTypeDef GPIO_InitStructure;
     TIM_OCInitTypeDef  TIM_OCInitStructure;
-    NVIC_InitTypeDef NVIC_InitStructure;
 
     fetSetConstants();
 
@@ -586,29 +585,31 @@ void fetMissedCommutate(int period) {
     timerSetAlarm2(newPeriod, fetMissedCommutate, period);
 }
 
-void fetCommutate(int period) {
+void fetCommutate(int period) 
+{
     // keep count of in order ZC detections
-    if (fetStep == fetNextStep) {
-	timerCancelAlarm2();
+    if (fetStep == fetNextStep) 
+	{
+		timerCancelAlarm2();
 
-	// commutate
-	fetSetStep(fetStep);
+		// commutate
+		fetSetStep(fetStep);
 
-	fetGoodDetects++;
-	if (fetGoodDetects >= 6)
-	    fetBadDetects = 0;
+		fetGoodDetects++;
+		if (fetGoodDetects >= 6)
+			fetBadDetects = 0;
 
-	// in case of missed zc
-	if (state == ESC_STATE_RUNNING)
-	    timerSetAlarm2(period + period/2, fetMissedCommutate, period);
-	else if (state == ESC_STATE_STARTING)
-//	    timerSetAlarm2(period*2, fetMissedCommutate, period*2);
-	    timerSetAlarm2(period + period/2, fetMissedCommutate, period);
+		// in case of missed zc
+		if (state == ESC_STATE_RUNNING)
+			timerSetAlarm2(period + period/2, fetMissedCommutate, period);
+		else if (state == ESC_STATE_STARTING)
+	//	    timerSetAlarm2(period*2, fetMissedCommutate, period*2);
+			timerSetAlarm2(period + period/2, fetMissedCommutate, period);
     }
     else {
-	fetBadDetects++;
-	fetTotalBadDetects++;
-	fetGoodDetects = 0;
+		fetBadDetects++;
+		fetTotalBadDetects++;
+		fetGoodDetects = 0;
     }
 }
 
@@ -741,7 +742,7 @@ void fetTest(void) {
     FET_H_TIMER->FET_A_H_CHANNEL = 200;
 
     while(1)
-	;
+		;
 
     //__asm volatile ("cpsie i");
 	CPSIE_I();
@@ -757,32 +758,32 @@ void fetSetConstants(void) {
 
     // bounds checking
     if (switchFreq > FET_MAX_SWITCH_FREQ)
-	switchFreq = FET_MAX_SWITCH_FREQ;
+		switchFreq = FET_MAX_SWITCH_FREQ;
     else if (switchFreq < FET_MIN_SWITCH_FREQ)
-	switchFreq = FET_MIN_SWITCH_FREQ;
+		switchFreq = FET_MIN_SWITCH_FREQ;
 
     if (startVoltage > FET_MAX_START_VOLTAGE)
-	startVoltage = FET_MAX_START_VOLTAGE;
+		startVoltage = FET_MAX_START_VOLTAGE;
     else if (startVoltage < FET_MIN_START_VOLTAGE)
-	startVoltage = FET_MIN_START_VOLTAGE;
+		startVoltage = FET_MIN_START_VOLTAGE;
 
     if (startDetects > FET_MAX_START_DETECTS)
-	startDetects = FET_MAX_START_DETECTS;
+		startDetects = FET_MAX_START_DETECTS;
     else if (startDetects < FET_MIN_START_DETECTS)
-	startDetects = FET_MIN_START_DETECTS;
+		startDetects = FET_MIN_START_DETECTS;
 
     if (disarmDetects > FET_MAX_DISARM_DETECTS)
-	disarmDetects = FET_MAX_DISARM_DETECTS;
+		disarmDetects = FET_MAX_DISARM_DETECTS;
     else if (disarmDetects < FET_MIN_DISARM_DETECTS)
-	disarmDetects = FET_MIN_DISARM_DETECTS;
+		disarmDetects = FET_MIN_DISARM_DETECTS;
 
     if (fetBraking > 0.0f)
-	fetBraking = 1.0f;
+		fetBraking = 1.0f;
     else
-	fetBraking = 0.0f;
+		fetBraking = 0.0f;
 
     if (servoMaxRate <= 0.0f)
-	servoMaxRate = 360.0f;
+		servoMaxRate = 360.0f;
 
     fetSwitchFreq = switchFreq * 1000 * 2;
     fetPeriod = FET_AHB_FREQ/fetSwitchFreq;     // bus speed / switching frequency - depends on fetSwitchFreq

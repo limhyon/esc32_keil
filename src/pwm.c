@@ -35,20 +35,20 @@ int16_t pwmMinStart;
 volatile uint32_t pwmValidMicros;
 
 inline void pwmIsrAllOff(void) {
-    PWM_TIM->DIER &= (uint16_t)~(TIM_IT_CC1 | TIM_IT_CC2);
+    PWM_TIM->DIER &= (uint16_t)~(TIM_IT_CC1 | TIM_IT_CC2);//关闭中断
 }
 
 inline void pwmIsrAllOn(void) {
     PWM_TIM->CCR1;
     PWM_TIM->CCR2;
-    PWM_TIM->DIER |= (TIM_IT_CC1 | TIM_IT_CC2);
+    PWM_TIM->DIER |= (TIM_IT_CC1 | TIM_IT_CC2);//允许捕获比较 1 2中断
 }
 
 inline void pwmIsrRunOn(void) {
     uint16_t dier = PWM_TIM->DIER;
 
     dier &= (uint16_t)~(TIM_IT_CC1 | TIM_IT_CC2);
-    dier |= TIM_IT_CC2;
+    dier |= TIM_IT_CC2;//允许捕获/比较2中断
 
     PWM_TIM->CCR1;
     PWM_TIM->CCR2;
@@ -78,6 +78,8 @@ void pwmInit(void)
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
+
+
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
     TIM_TimeBaseStructure.TIM_Prescaler = (PWM_CLK_DIVISOR-1);
     TIM_TimeBaseStructure.TIM_Period = 0xffff;
@@ -95,7 +97,7 @@ void pwmInit(void)
     TIM_SelectInputTrigger(PWM_TIM, TIM_TS_TI1FP1);
 
     // Select the slave Mode: Reset Mode
-    TIM_SelectSlaveMode(PWM_TIM, TIM_SlaveMode_Reset);
+    TIM_SelectSlaveMode(PWM_TIM, TIM_SlaveMode_Reset);//复位模式
 
     // Enable the Master/Slave Mode
     TIM_SelectMasterSlaveMode(PWM_TIM, TIM_MasterSlaveMode_Enable);
@@ -106,31 +108,33 @@ void pwmInit(void)
     pwmIsrAllOn();
 }
 
+//timer1 TIM1_CC_IRQHandler中断
 void PWM_IRQ_HANDLER(void) {
-    uint16_t pwmValue;
-    uint16_t periodValue;
-    uint8_t edge;
+	uint16_t pwmValue;
+	uint16_t periodValue;
+	uint8_t edge;
 
-    edge = !(PWM_TIM->SR & TIM_IT_CC2);
+	edge = !(PWM_TIM->SR & TIM_IT_CC2);
 
-    periodValue = PWM_TIM->CCR1;
-    pwmValue = PWM_TIM->CCR2;
+	periodValue = PWM_TIM->CCR1;
+	pwmValue = PWM_TIM->CCR2;
 
-    // is this an OW reset pulse?
-    if (state == ESC_STATE_DISARMED && edge == 1 && (periodValue - pwmValue) > OW_RESET_MIN && (periodValue - pwmValue) < OW_RESET_MAX) {
-	owReset();
-    }
-    // look for good RC PWM input
-    else if (inputMode == ESC_INPUT_PWM && periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue) {
-	if (edge == 0) {
-	    pwmValidMicros = timerMicros;
-	    runNewInput(pwmValue);
+	// is this an OW reset pulse?
+	if (state == ESC_STATE_DISARMED && edge == 1 && (periodValue - pwmValue) > OW_RESET_MIN && (periodValue - pwmValue) < OW_RESET_MAX) {
+		owReset();
 	}
-    }
-    // otherwise if already in OW mode, pass control to OW
-    else if (inputMode == ESC_INPUT_OW) {
-	owEdgeDetect(edge);
-    }
+	// look for good RC PWM input
+	else if (inputMode == ESC_INPUT_PWM && periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue) 
+	{
+		if (edge == 0) {
+			pwmValidMicros = timerMicros;
+			runNewInput(pwmValue);
+		}
+	}
+	// otherwise if already in OW mode, pass control to OW
+	else if (inputMode == ESC_INPUT_OW) {
+		owEdgeDetect(edge);
+	}
 }
 
 void pwmSetConstants(void) {
@@ -145,9 +149,9 @@ void pwmSetConstants(void) {
     pwmMinStart = p[PWM_MIN_START] = (int)p[PWM_MIN_START];
 
     if (rpmScale < PWM_RPM_SCALE_MIN)
-	rpmScale = PWM_RPM_SCALE_MIN;
+		rpmScale = PWM_RPM_SCALE_MIN;
     else if (rpmScale > PWM_RPM_SCALE_MAX)
-	rpmScale = PWM_RPM_SCALE_MAX;
+		rpmScale = PWM_RPM_SCALE_MAX;
 
     p[PWM_RPM_SCALE] = rpmScale;
 }
