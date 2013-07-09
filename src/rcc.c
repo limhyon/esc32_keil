@@ -39,10 +39,12 @@ void rccWriteBkpDr(uint32_t value)
 
 static __asm void rcc_asm(void)
 {
+	PUSH {lr}
 	LDR     R0, =0x1FFFF000
 	LDR     SP,[R0, #0]
 	LDR     R0,[R0, #4]
 	BX      R0
+	POP {PC}
 }
 
 static void rccBootLoader(void) 

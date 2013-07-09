@@ -91,7 +91,7 @@ int main(void)
 			idleCounter++;
 
 			//NOPS_4;
-			nop();nop();nop();nop();
+			nop();
 
 			cycles = *DWT_CYCCNT;
 			*DWT_CYCCNT = 0;		    // reset the counter
@@ -148,20 +148,31 @@ void reset_wait(void) {
 //AXian keil不支持嵌汇编.因为他不支持thumb指令集
 __asm void CPSID_I(void)
 {
+	PUSH {lr}
 	cpsid i
+	POP {PC}
 }
 
 __asm void CPSID_F(void)
 {
+	PUSH {lr}
 	cpsid f
+	POP {PC}
 }
 
 __asm void CPSIE_I(void)
 {
+	PUSH {lr}
 	cpsie i 
+	POP {PC}
 }
 
 __asm void nop(void)
 {
+	PUSH {lr}
 	nop
+	nop
+	nop
+	nop
+	POP {PC}
 }
