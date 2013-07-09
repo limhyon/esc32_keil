@@ -55,7 +55,7 @@ static void rccBootLoader(void)
 		rccWriteBkpDr(0); // reset flag
 
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
-		//GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);//我们要使用JTAG
+		GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
 		//设置两个LED并输出低电平
 		statusLed = digitalInit(GPIO_STATUS_LED_PORT, GPIO_STATUS_LED_PIN);
@@ -135,7 +135,7 @@ void rccInit(void)
 
 
     // Disable JTAG-DP 我们不关闭jtag.继续使用
-    //GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
 	//配置ADC的采样时钟
     RCC_ADCCLKConfig(ADC_CLOCK);
