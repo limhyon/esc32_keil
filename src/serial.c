@@ -76,7 +76,7 @@ void serialPrint(const char *str) {
     while (*str)
 		serialWrite(*(str++));
 }
-
+//打开串口
 static void serialOpenPort(int baud) {
     USART_InitTypeDef USART_InitStructure;
 
@@ -120,6 +120,7 @@ void serialInit(void) {
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
+	//串口收发指针
     s->rxHead = s->rxTail = 0;
     s->txHead = s->txTail = 0;
 

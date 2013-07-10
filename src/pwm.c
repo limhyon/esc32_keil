@@ -34,16 +34,17 @@ int16_t pwmMaxValue;
 int16_t pwmMinStart;
 volatile uint32_t pwmValidMicros;
 
+//关闭输入捕获比较中断 1和2
 inline void pwmIsrAllOff(void) {
     PWM_TIM->DIER &= (uint16_t)~(TIM_IT_CC1 | TIM_IT_CC2);//关闭中断
 }
-
+//开启输入捕获比较中断 1和2
 inline void pwmIsrAllOn(void) {
     PWM_TIM->CCR1;
     PWM_TIM->CCR2;
     PWM_TIM->DIER |= (TIM_IT_CC1 | TIM_IT_CC2);//允许捕获比较 1 2中断
 }
-
+//开启捕获比较2中断
 inline void pwmIsrRunOn(void) {
     uint16_t dier = PWM_TIM->DIER;
 
@@ -93,7 +94,9 @@ void pwmInit(void)
     TIM_ICInitStructure.TIM_ICFilter = 0x0;
     TIM_PWMIConfig(PWM_TIM, &TIM_ICInitStructure);
 
+
     // Select the TIM Input Trigger: TI1FP1
+	// 滤波后的定时器输入1(TI1FP1) 
     TIM_SelectInputTrigger(PWM_TIM, TIM_TS_TI1FP1);
 
     // Select the slave Mode: Reset Mode

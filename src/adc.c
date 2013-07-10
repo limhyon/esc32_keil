@@ -267,7 +267,8 @@ static void adcEvaluateHistSize(void)
 extern __asm void CPSID_I(void);
 extern __asm void CPSIE_I(void);
 //dma1 ad采样完成中断
-#pragma GCC optimize ("-O1")
+//#pragma GCC optimize ("-O1")
+#pragma O1
 void DMA1_Channel1_IRQHandler(void) 
 {
 	register uint16_t *raw = (uint16_t *)adcRawData;

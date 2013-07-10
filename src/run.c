@@ -45,7 +45,7 @@ float maxCurrentSQRT;
 uint8_t disarmReason;
 uint8_t commandMode;
 uint8_t runArmCount;
-volatile uint8_t runMode;
+volatile uint8_t runMode;//运行模式
 float maxThrust;
 
 void runFeedIWDG(void) {
@@ -55,6 +55,7 @@ void runFeedIWDG(void) {
 }
 
 // setup the hardware independent watchdog
+// 初始化并开启独立看门狗
 uint16_t runIWDGInit(int ms) 
 {
     uint16_t prevReloadVal;
@@ -63,13 +64,13 @@ uint16_t runIWDGInit(int ms)
 #ifndef RUN_ENABLE_IWDG
     return 0;
 #endif
-    IWDG_ReloadCounter();
+    IWDG_ReloadCounter();//喂狗
 
-    DBGMCU_Config(DBGMCU_IWDG_STOP, ENABLE);
+    DBGMCU_Config(DBGMCU_IWDG_STOP, ENABLE);//当在jtag调试的时候.停止看门狗
 
     // IWDG timeout equal to 10 ms (the timeout may varies due to LSI frequency dispersion)
     // Enable write access to IWDG_PR and IWDG_RLR registers
-    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);//允许访问IWDG_PR和IWDG_RLR寄存器
 
     // IWDG counter clock: LSI/4
     IWDG_SetPrescaler(IWDG_Prescaler_4);
@@ -83,9 +84,9 @@ uint16_t runIWDGInit(int ms)
     reloadVal = RUN_LSI_FREQ*ms/4000;
 
     if (reloadVal < 1)
-	reloadVal = 1;
+		reloadVal = 1;
     else if (reloadVal > 0xfff)
-	reloadVal = 0xfff;
+		reloadVal = 0xfff;
 
     prevReloadVal = IWDG->RLR;
 
@@ -238,7 +239,7 @@ void runNewInput(uint16_t setpoint) {
 extern __asm void CPSID_I(void);
 extern __asm void CPSIE_I(void);
 
-void runWatchDog(void) 
+static void runWatchDog(void) 
 {
 	register uint32_t t, d, p;
 
@@ -340,7 +341,7 @@ int32_t runRpmPID(float rpm, float target) {
 	return output;
 }
 
-uint8_t runRpm(void) {
+static uint8_t runRpm(void) {
     if (state > ESC_STATE_STARTING) 
 	{
 		//	rpm = rpm * 0.90f + (runRPMFactor / (float)crossingPeriod) * 0.10f;
@@ -370,7 +371,7 @@ uint8_t runRpm(void) {
     }
 }
 
-void runSetupPVD(void) {
+static void runSetupPVD(void) {
     EXTI_InitTypeDef EXTI_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -390,7 +391,7 @@ void runSetupPVD(void) {
     NVIC_Init(&NVIC_InitStructure);
 
     // Configure the PVD Level to 2.2V
-    PWR_PVDLevelConfig(PWR_PVDLevel_2V2);
+    PWR_PVDLevelConfig(PWR_PVDLevel_2V2);//配置pvd电压等级.当电压小于2.2V的时候产生中断
 
     // Enable the PVD Output
     PWR_PVDCmd(ENABLE);
@@ -401,6 +402,7 @@ void runInit(void) {
     runSetConstants();
     runMode = p[STARTUP_MODE];
 
+	//系统tickcount时钟
     SysTick_Config(SystemCoreClock / 1000); // 1ms
     NVIC_SetPriority(SysTick_IRQn, 2);	    // lower priority
 
@@ -467,7 +469,7 @@ void runThrotLim(int32_t duty) {
 
     _fetSetDutyCycle(fetActualDutyCycle);
 }
-
+//系统tickcount中断
 void SysTick_Handler(void) {
     // reload the hardware watchdog
     runFeedIWDG();
@@ -500,6 +502,7 @@ void SysTick_Handler(void) {
     runMilis++;
 }
 
+//低电压中断
 void PVD_IRQHandler(void) {
     // voltage dropping too low
     if (EXTI_GetITStatus(EXTI_Line16) != RESET) {

@@ -136,9 +136,10 @@ void configInit(void) {
 
     configLoadDefault();
 
+	//从这个地址读取出版本号
     ver = *(float *)FLASH_WRITE_ADDR;
 
-    if (isnan(ver))
+    if (isnan(ver))//判断ver  如果ver为非负数(NAN，值为0xffffffff)，返回1，否则返回0 
 		configWriteFlash();//配置写入flash
     else if (ver >= p[CONFIG_VERSION])
 		configReadFlash();
@@ -156,6 +157,7 @@ static void configRecalcConst(void) {
     serialSetConstants();
 }
 
+//根据传递数组index,设置参数值
 int configSetParamByID(int i, float value) {
     int ret = 0;
 
@@ -169,6 +171,7 @@ int configSetParamByID(int i, float value) {
     return ret;
 }
 
+//根据字符串parm,设置参数value
 int configSetParam(char *param, float value) {
     int ret = 0;
     int i;
@@ -184,14 +187,15 @@ int configSetParam(char *param, float value) {
     return ret;
 }
 
+//根据参数param(字符串).获取参数的数组index
 int configGetId(char *param) {
-    int i;
+	int i;
 
-    for (i = 0; i < CONFIG_NUM_PARAMS; i++)
-	if (!strncasecmp(configParameterStrings[i], param, strlen(configParameterStrings[i])))
-	    return i;
+	for (i = 0; i < CONFIG_NUM_PARAMS; i++)
+		if (!strncasecmp(configParameterStrings[i], param, strlen(configParameterStrings[i])))//字符串比较,比较成功返回数组index
+			return i;
 
-    return -1;
+	return -1;
 }
 
 #if 0//这个函数没有调用
@@ -204,7 +208,7 @@ float configGetParam(char *param) {
 	return p[i];
     else
 	//return __float32_nan;
-	return 0;//AXian 找不到__float32_nan这个变量.先这么定义了
+	return NAN;//AXian 找不到__float32_nan这个变量.先这么定义了
 }
 #endif
 
@@ -308,6 +312,7 @@ int configWriteFlash(void)
     return ret;
 }
 
+//读取flash上的参数到内存中
 void configReadFlash(void) {
     memcpy(p, (char *)FLASH_WRITE_ADDR, sizeof(p));
 

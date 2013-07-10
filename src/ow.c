@@ -35,35 +35,38 @@ uint8_t owWriteNum;
 uint8_t owBit;
 
 uint8_t owCRC(uint8_t inData, uint8_t seed) {
-    uint8_t bitsLeft;
-    uint8_t temp;
+	uint8_t bitsLeft;
+	uint8_t temp;
 
-    for (bitsLeft = 8; bitsLeft > 0; bitsLeft--) {
-	temp = ((seed ^ inData) & 0x01);
-	if (temp == 0) {
-	    seed >>= 1;
+	for (bitsLeft = 8; bitsLeft > 0; bitsLeft--) 
+	{
+		temp = ((seed ^ inData) & 0x01);
+		if (temp == 0) 
+		{
+			seed >>= 1;
+		}
+		else 
+		{
+			seed ^= 0x18;
+			seed >>= 1;
+			seed |= 0x80;
+		}
+		inData >>= 1;
 	}
-	else {
-	    seed ^= 0x18;
-	    seed >>= 1;
-	    seed |= 0x80;
-	}
-	inData >>= 1;
-    }
 
-    return seed;
+	return seed;
 }
 
 void owInit(void) {
-    int i;
+	int i;
 
-    owROMCode[0] = 0xAA;
-    for (i = 0; i < 6; i++)
-	owROMCode[i+1] = *(((uint8_t *)(OW_UID_ADDRESS))+i);
+	owROMCode[0] = 0xAA;
+	for (i = 0; i < 6; i++)
+		owROMCode[i+1] = *(((uint8_t *)(OW_UID_ADDRESS))+i);
 
-    owROMCode[7] = 0x00;
-    for (i = 0; i < 7; i++)
-	owROMCode[7] = owCRC(owROMCode[i], owROMCode[7]);
+	owROMCode[7] = 0x00;
+	for (i = 0; i < 7; i++)
+		owROMCode[7] = owCRC(owROMCode[i], owROMCode[7]);
 }
 
 void owPullLow(void) {
@@ -258,76 +261,76 @@ void owWriteComplete(void) {
 }
 
 void owByteReceived(void) {
-    *(owBufPointer++) = owByteValue;
+	*(owBufPointer++) = owByteValue;
 
-    owTimeout(300);
+	owTimeout(300);
 
-    if (--owReadNum > 0)
-	owReadBytes(owReadNum);
-    else
-	owReadComplete();
+	if (--owReadNum > 0)
+		owReadBytes(owReadNum);
+	else
+		owReadComplete();
 }
 
 void owByteSent(void) {
-    owBufPointer++;
+	owBufPointer++;
 
-    owTimeout(300);
+	owTimeout(300);
 
-    if (--owWriteNum > 0)
-	owWriteBytes(owWriteNum);
-    else
-	owWriteComplete();
+	if (--owWriteNum > 0)
+		owWriteBytes(owWriteNum);
+	else
+		owWriteComplete();
 }
 
 void owEdgeDetect(uint8_t edge) {
-    if (edge == 0) {
-	switch (owState) {
-	    case OW_READ:
-		// read bit in 15us
-		pwmIsrAllOff();
-		owRelease();
-		timerSetAlarm3(15*TIMER_MULT, owReadBitIsr, 0);
-	    break;
+	if (edge == 0) {
+		switch (owState) {
+		case OW_READ:
+			// read bit in 15us
+			pwmIsrAllOff();
+			owRelease();
+			timerSetAlarm3(15*TIMER_MULT, owReadBitIsr, 0);
+			break;
 
-	    case OW_WRITE:
-		// write bit
-		owRelease();
-		owWriteBitIsr(0);
-	    break;
+		case OW_WRITE:
+			// write bit
+			owRelease();
+			owWriteBitIsr(0);
+			break;
+		}
 	}
-    }
 }
 
 void owResetIsr(int state) {
-    switch (state) {
+	switch (state) {
 	case OW_RESET_STATE_0:
-	    // wait 15us
-	    timerSetAlarm3(15*TIMER_MULT, owResetIsr, OW_RESET_STATE_1);
-	break;
+		// wait 15us
+		timerSetAlarm3(15*TIMER_MULT, owResetIsr, OW_RESET_STATE_1);
+		break;
 
 	case OW_RESET_STATE_1:
-	    // signal presence for 70us
-	    owPullLow();
-	    timerSetAlarm3(70*TIMER_MULT, owResetIsr, OW_RESET_STATE_2);
-	break;
+		// signal presence for 70us
+		owPullLow();
+		timerSetAlarm3(70*TIMER_MULT, owResetIsr, OW_RESET_STATE_2);
+		break;
 
 	case OW_RESET_STATE_2:
-	    // release bus and wait for byte
-	    owRelease();
+		// release bus and wait for byte
+		owRelease();
 
-	    // light status LED
-	    digitalLo(statusLed);
+		// light status LED
+		digitalLo(statusLed);
 
-	    // prepare to read a byte
-	    owState = OW_READ;
-	    owBufPointer = owBuf;
-	    owLastCommand = 0x00;
-	    owReadBytes(1);
+		// prepare to read a byte
+		owState = OW_READ;
+		owBufPointer = owBuf;
+		owLastCommand = 0x00;
+		owReadBytes(1);
 
-	    // 15ms timeout
-	    owTimeout(15000);
-	break;
-    }
+		// 15ms timeout
+		owTimeout(15000);
+		break;
+	}
 }
 
 void owReadBitIsr(int unused) {
@@ -341,36 +344,36 @@ void owReadBitIsr(int unused) {
 
     // is byte complete?
     if (++owBit > 7)
-	owByteReceived();
+		owByteReceived();
 }
 
 void owWriteBitIsr(int state) {
-    // write bit
-    if (state == 0) {
-	// only 0 bits need action, 1 bits let the bus rise on its own
-	if (!(owByteValue & (0x01<<owBit++))) {
-	    owPullLow();
-	    // schedule release
-	    timerSetAlarm3(30*TIMER_MULT, owWriteBitIsr, 1);
+	// write bit
+	if (state == 0) {
+		// only 0 bits need action, 1 bits let the bus rise on its own
+		if (!(owByteValue & (0x01<<owBit++))) {
+			owPullLow();
+			// schedule release
+			timerSetAlarm3(30*TIMER_MULT, owWriteBitIsr, 1);
+		}
+		else {
+			owTimeout(150);
+
+			// finished with this byte
+			if (owBit > 7)
+				owByteSent();
+		}
 	}
+	// release bus
 	else {
-	    owTimeout(150);
+		owRelease();
 
-	    // finished with this byte
-	    if (owBit > 7)
-		    owByteSent();
+		owTimeout(150);
+
+		// finished with this byte
+		if (owBit > 7)
+			owByteSent();
 	}
-    }
-    // release bus
-    else {
-	owRelease();
-
-	owTimeout(150);
-
-	// finished with this byte
-	if (owBit > 7)
-		owByteSent();
-    }
 }
 
 void owTimeoutIsr(int unused) {

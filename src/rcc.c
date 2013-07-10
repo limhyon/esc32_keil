@@ -136,7 +136,7 @@ void rccInit(void)
     GPIO_Init(GPIOC, &GPIO_InitStructure);
 
 
-    // Disable JTAG-DP 我们不关闭jtag.继续使用
+    // Disable JTAG-DP
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
 	//配置ADC的采样时钟

@@ -138,7 +138,7 @@ void timerSetAlarm1(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
     if (ticks <= TIMER_MULT) 
 	{
-		//小于2个ticks.直接调用
+		//小于2个ticks.直接调用callback传递来的函数
 		// Disable the Interrupt
 		TIMER_TIM->DIER &= (uint16_t)~TIM_IT_CC1;
 
@@ -146,6 +146,7 @@ void timerSetAlarm1(int32_t ticks, timerCallback_t *callback, int parameter) {
     }
     // otherwise, schedule it
     else {
+		//否则注册.在定时器中断里面调用
 		timerData.alarm1Callback = callback;
 		timerData.alarm1Parameter = parameter;
 

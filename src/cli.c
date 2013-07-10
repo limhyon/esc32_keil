@@ -33,13 +33,14 @@
 #include <math.h>
 
 char version[16];
-char cliBuf[32];
-char tempBuf[64];
-int cliBufIndex;
-int cliTelemetry;
+static char cliBuf[32]; //串口接收到的数据保存在此数组里面,根据cliBufIndex来索引
+static int cliBufIndex; //当前串口缓存的数组index
+static char tempBuf[64];
+static int cliTelemetry;
 
 // this table must be sorted by command name
-const cliCommand_t cliCommandTable[] = {
+//这个数组必须按照从小到大排列.因为后面用二分法来搜索
+static const cliCommand_t cliCommandTable[] = {
     {"arm", "", cliFuncArm},
     {"beep", "<frequency> <duration>", cliFuncBeep},
     {"binary", "", cliFuncBinary},
@@ -47,23 +48,23 @@ const cliCommand_t cliCommandTable[] = {
     {"config", "[READ | WRITE | DEFAULT]", cliFuncConfig},
     {"disarm", "", cliFuncDisarm},
     {"duty", "<percent>", cliFuncDuty},
-    {"help", "", cliFuncHelp},
-    {"input", "[PWM | UART | I2C | CAN]", cliFuncInput},
+    {"help", "", cliFuncHelp},   //显示支持的功能命令的帮助信息
+    {"input", "[PWM | UART | I2C | CAN]", cliFuncInput},  //设置输入控制模式
     {"mode", "[OPEN_LOOP | RPM | THRUST | SERVO]", cliFuncMode},
     {"pos", "<degrees>", cliFuncPos},
     {"pwm", "<microseconds>", cliFuncPwm},
     {"rpm", "<target>", cliFuncRpm},
     {"set", "LIST | [<PARAMETER> <value>]", cliFuncSet},
     {"start", "", cliFuncStart},
-    {"status", "", cliFuncStatus},
+    {"status", "", cliFuncStatus},//显示状态
     {"stop", "", cliFuncStop},
     {"telemetry", "<Hz>", cliFuncTelemetry},
-    {"version", "", cliFuncVer}
+    {"version", "", cliFuncVer}  //显示版本
 };
 
 #define CLI_N_CMDS (sizeof cliCommandTable / sizeof cliCommandTable[0])
 
-const char *cliInputModes[] = {
+static const char *cliInputModes[] = {
     "PWM",
     "UART",
     "I2C",
@@ -71,7 +72,7 @@ const char *cliInputModes[] = {
     "OW"
 };
 
-const char *cliStates[] = {
+static const char *cliStates[] = {
     "DISARMED",
     "STOPPED",
     "PRE-START",
@@ -79,20 +80,21 @@ const char *cliStates[] = {
     "RUNNING"
 };
 
-const char *cliRunModes[] = {
+static const char *cliRunModes[] = {
     "OPEN_LOOP",
     "RPM",
     "THRUST",
     "SERVO"
 };
 
-const char cliHome[] = {0x1b, 0x5b, 0x48, 0x00};
-const char cliClear[] = {0x1b, 0x5b, 0x32, 0x4a, 0x00};
-const char cliClearEOL[] = {0x1b, 0x5b, 0x4b, 0x00};
-const char cliClearEOS[] = {0x1b, 0x5b, 0x4a, 0x00};
-const char *stopError = "ESC must be stopped first\r\n";
-const char *runError = "ESC not running\r\n";
+static const char cliHome[] = {0x1b, 0x5b, 0x48, 0x00};
+static const char cliClear[] = {0x1b, 0x5b, 0x32, 0x4a, 0x00};
+static const char cliClearEOL[] = {0x1b, 0x5b, 0x4b, 0x00};
+static const char cliClearEOS[] = {0x1b, 0x5b, 0x4a, 0x00};
+static const char *stopError = "ESC must be stopped first\r\n";
+static const char *runError = "ESC not running\r\n";
 
+//命令提示.
 void cliUsage(cliCommand_t *cmd) {
     serialPrint("usage: ");
     serialPrint(cmd->name);
@@ -100,146 +102,148 @@ void cliUsage(cliCommand_t *cmd) {
     serialPrint(cmd->params);
     serialPrint("\r\n");
 }
-
-void cliFuncChangeInput(uint8_t input) {
-    if (inputMode != input) {
-	inputMode = input;
-	sprintf(tempBuf, "Input mode set to %s\r\n", cliInputModes[input]);
-	serialPrint(tempBuf);
-    }
+//设置控制模式(串口 can iic pwm)
+static void cliFuncChangeInput(uint8_t input) {
+	if (inputMode != input) {
+		inputMode = input;
+		sprintf(tempBuf, "Input mode set to %s\r\n", cliInputModes[input]);
+		serialPrint(tempBuf);
+	}
 }
 
-void cliFuncArm(void *cmd, char *cmdLine) {
-    if (state > ESC_STATE_DISARMED) {
-	serialPrint("ESC already armed\r\n");
-    }
-    else {
-	if (runMode != SERVO_MODE)
-	    cliFuncChangeInput(ESC_INPUT_UART);
-	runArm();
-	serialPrint("ESC armed\r\n");
-    }
-}
-
-void cliFuncBeep(void *cmd, char *cmdLine) {
-    uint16_t freq, dur;
-
-    if (state > ESC_STATE_STOPPED) {
-	serialPrint(stopError);
-    }
-    else {
-	if (sscanf(cmdLine, "%hu %hu", &freq, &dur) != 2) {
-	    cliUsage((cliCommand_t *)cmd);
-	}
-	else if (freq < 10 || freq > 5000) {
-	    serialPrint("frequency out of range: 10 => 5000\r\n");
-	}
-	else if (dur < 1 || dur > 1000) {
-	    serialPrint("duration out of range: 1 => 1000\r\n");
+static void cliFuncArm(void *cmd, char *cmdLine) {
+	if (state > ESC_STATE_DISARMED) {
+		serialPrint("ESC already armed\r\n");
 	}
 	else {
-	    fetBeep(freq, dur);
+		if (runMode != SERVO_MODE)
+			cliFuncChangeInput(ESC_INPUT_UART);
+		runArm();
+		serialPrint("ESC armed\r\n");
 	}
-    }
 }
 
-void cliFuncBinary(void *cmd, char *cmdLine) {
+static void cliFuncBeep(void *cmd, char *cmdLine) {
+	uint16_t freq, dur;
+
+	if (state > ESC_STATE_STOPPED) {
+		serialPrint(stopError);
+	}
+	else {
+		if (sscanf(cmdLine, "%hu %hu", &freq, &dur) != 2) {
+			cliUsage((cliCommand_t *)cmd);
+		}
+		else if (freq < 10 || freq > 5000) {
+			serialPrint("frequency out of range: 10 => 5000\r\n");
+		}
+		else if (dur < 1 || dur > 1000) {
+			serialPrint("duration out of range: 1 => 1000\r\n");
+		}
+		else {
+			fetBeep(freq, dur);
+		}
+	}
+}
+
+static void cliFuncBinary(void *cmd, char *cmdLine) {
     if (state > ESC_STATE_STOPPED) {
-	serialPrint(stopError);
+		serialPrint(stopError);
     }
     else {
-	serialPrint("Entering binary command mode...\r\n");
-	cliTelemetry = 0;
-	commandMode = BINARY_MODE;
+		serialPrint("Entering binary command mode...\r\n");
+		cliTelemetry = 0;
+		commandMode = BINARY_MODE;
     }
 }
 
-void cliFuncBoot(void *cmd, char *cmdLine) {
+static void cliFuncBoot(void *cmd, char *cmdLine) {
     if (state != ESC_STATE_DISARMED) {
-	serialPrint("ESC armed, disarm first\r\n");
+		serialPrint("ESC armed, disarm first\r\n");
     }
     else {
-	serialPrint("Rebooting in boot loader mode...\r\n");
-	timerDelay(0xffff);
+		serialPrint("Rebooting in boot loader mode...\r\n");
+		timerDelay(0xffff);
 
-	rccReset();
+		rccReset();
     }
 }
 
-void cliFuncConfig(void *cmd, char *cmdLine) {
-    char param[8];
+static void cliFuncConfig(void *cmd, char *cmdLine) {
+	char param[8];
 
-    if (state > ESC_STATE_STOPPED) {
-	serialPrint(stopError);
-    }
-    else if (sscanf(cmdLine, "%8s", param) != 1) {
-	cliUsage((cliCommand_t *)cmd);
-    }
-    else if (!strcasecmp(param, "default")) {
-	configLoadDefault();
-	serialPrint("CONFIG: defaults loaded\r\n");
-    }
-    else if (!strcasecmp(param, "read")) {
-	configReadFlash();
-	serialPrint("CONFIG: read flash\r\n");
-    }
-    else if (!strcasecmp(param, "write")) {
-	if (configWriteFlash()) {
-	    serialPrint("CONFIG: wrote flash\r\n");
+	if (state > ESC_STATE_STOPPED) {
+		serialPrint(stopError);
+	}
+	else if (sscanf(cmdLine, "%8s", param) != 1) {
+		cliUsage((cliCommand_t *)cmd);
+	}
+	else if (!strcasecmp(param, "default")) {
+		configLoadDefault();
+		serialPrint("CONFIG: defaults loaded\r\n");
+	}
+	else if (!strcasecmp(param, "read")) {
+		configReadFlash();
+		serialPrint("CONFIG: read flash\r\n");
+	}
+	else if (!strcasecmp(param, "write")) 
+	{
+		if (configWriteFlash()) {
+			serialPrint("CONFIG: wrote flash\r\n");
+		}
+		else {
+			serialPrint("CONFIG: write flash failed!\r\n");
+		}
 	}
 	else {
-	    serialPrint("CONFIG: write flash failed!\r\n");
+		cliUsage((cliCommand_t *)cmd);
 	}
-    }
-    else {
-    	cliUsage((cliCommand_t *)cmd);
-    }
 }
 
-void cliFuncDisarm(void *cmd, char *cmdLine) {
+static void cliFuncDisarm(void *cmd, char *cmdLine) {
     runDisarm(REASON_CLI);
     cliFuncChangeInput(ESC_INPUT_UART);
     serialPrint("ESC disarmed\r\n");
 }
 
-void cliFuncDuty(void *cmd, char *cmdLine) {
-    float duty;
+static void cliFuncDuty(void *cmd, char *cmdLine) {
+	float duty;
 
-    if (state < ESC_STATE_RUNNING) {
-	serialPrint(runError);
-    }
-    else {
-	if (sscanf(cmdLine, "%f", &duty) != 1) {
-	    cliUsage((cliCommand_t *)cmd);
+	if (state < ESC_STATE_RUNNING) {
+		serialPrint(runError);
 	}
-	else if (!runDuty(duty)) {
-	    serialPrint("duty out of range: 0 => 100\r\n");
+	else 
+	{
+		if (sscanf(cmdLine, "%f", &duty) != 1) {
+			cliUsage((cliCommand_t *)cmd);
+		}
+		else if (!runDuty(duty)) {
+			serialPrint("duty out of range: 0 => 100\r\n");
+		}
+		else {
+			sprintf(tempBuf, "Fet duty set to %.2f%%\r\n", (float)fetDutyCycle/fetPeriod*100.0f);
+			serialPrint(tempBuf);
+		}
 	}
-	else {
-	    sprintf(tempBuf, "Fet duty set to %.2f%%\r\n", (float)fetDutyCycle/fetPeriod*100.0f);
-	    serialPrint(tempBuf);
-	}
-    }
 }
 
-void cliFuncHelp(void *cmd, char *cmdLine) {
+static void cliFuncHelp(void *cmd, char *cmdLine) {
     int i;
 
     serialPrint("Available commands:\r\n\n");
 
     for (i = 0; i < CLI_N_CMDS; i++) {
-	serialPrint(cliCommandTable[i].name);
-	serialWrite(' ');
-	serialPrint(cliCommandTable[i].params);
-	serialPrint("\r\n");
+		serialPrint(cliCommandTable[i].name);
+		serialWrite(' ');
+		serialPrint(cliCommandTable[i].params);
+		serialPrint("\r\n");
     }
 }
-
-void cliFuncInput(void *cmd, char *cmdLine) {
+//更改输入模式(pwm iic can uart)
+static void cliFuncInput(void *cmd, char *cmdLine) {
 	char mode[sizeof cliInputModes[0]];
 	int i;
 
-	if (sscanf(cmdLine, "%7s", &mode) != 1) {
+	if (sscanf(cmdLine, "%7s", mode) != 1) {
 		cliUsage((cliCommand_t *)cmd);
 	}
 	else 
@@ -251,87 +255,87 @@ void cliFuncInput(void *cmd, char *cmdLine) {
 
 		if (i < (sizeof cliInputModes / sizeof cliInputModes[0])) {
 			cliFuncDisarm(cmd, cmdLine);
-			cliFuncChangeInput(i);
+			cliFuncChangeInput(i);//更改输入模式
+		}
+		else
+			cliUsage((cliCommand_t *)cmd);//没有找到支持的模式
+	}
+}
+
+static void cliFuncMode(void *cmd, char *cmdLine) {
+	char mode[sizeof cliRunModes[0]];
+	int i;
+
+	if (sscanf(cmdLine, "%10s", mode) != 1) {
+		cliUsage((cliCommand_t *)cmd);
+	}
+	else {
+		for (i = 0; i < (sizeof cliRunModes / sizeof cliRunModes[0]); i++) {
+			if (!strncasecmp(cliRunModes[i], mode, strlen(cliRunModes[i])))
+				break;
+		}
+
+		if (i < (sizeof cliRunModes / sizeof cliRunModes[0])) {
+			cliFuncDisarm(cmd, cmdLine);
+			runMode = i;
+			sprintf(tempBuf, "Run mode set to %s\r\n", cliRunModes[i]);
+			serialPrint(tempBuf);
 		}
 		else
 			cliUsage((cliCommand_t *)cmd);
 	}
 }
 
-void cliFuncMode(void *cmd, char *cmdLine) {
-    char mode[sizeof cliRunModes[0]];
-    int i;
+static void cliFuncPos(void *cmd, char *cmdLine) {
+	float angle;
 
-    if (sscanf(cmdLine, "%10s", &mode) != 1) {
-	cliUsage((cliCommand_t *)cmd);
-    }
-    else {
-	for (i = 0; i < (sizeof cliRunModes / sizeof cliRunModes[0]); i++) {
-	    if (!strncasecmp(cliRunModes[i], mode, strlen(cliRunModes[i])))
-		break;
+	if (state < ESC_STATE_RUNNING) {
+		serialPrint(runError);
 	}
-
-	if (i < (sizeof cliRunModes / sizeof cliRunModes[0])) {
-	    cliFuncDisarm(cmd, cmdLine);
-	    runMode = i;
-	    sprintf(tempBuf, "Run mode set to %s\r\n", cliRunModes[i]);
-	    serialPrint(tempBuf);
-	}
-	else
-	    cliUsage((cliCommand_t *)cmd);
-    }
-}
-
-void cliFuncPos(void *cmd, char *cmdLine) {
-    float angle;
-
-    if (state < ESC_STATE_RUNNING) {
-	serialPrint(runError);
-    }
-    else if (runMode != SERVO_MODE) {
-	serialPrint("Command only valid in servo mode\r\n");
-    }
-    else {
-	if (sscanf(cmdLine, "%f", &angle) != 1) {
-	    cliUsage((cliCommand_t *)cmd);
+	else if (runMode != SERVO_MODE) {
+		serialPrint("Command only valid in servo mode\r\n");
 	}
 	else {
-	    fetSetAngle(angle);
-	    sprintf(tempBuf, "Position set to %.1f\r\n", angle);
-	    serialPrint(tempBuf);
+		if (sscanf(cmdLine, "%f", &angle) != 1) {
+			cliUsage((cliCommand_t *)cmd);
+		}
+		else {
+			fetSetAngle(angle);
+			sprintf(tempBuf, "Position set to %.1f\r\n", angle);
+			serialPrint(tempBuf);
+		}
 	}
-    }
 }
 
-void cliFuncPwm(void *cmd, char *cmdLine) {
-    uint16_t pwm;
+static void cliFuncPwm(void *cmd, char *cmdLine) {
+	uint16_t pwm;
 
-    if (state < ESC_STATE_RUNNING) {
-	serialPrint(runError);
-    }
-    else {
-	if (sscanf(cmdLine, "%hu", &pwm) != 1) {
-	    cliUsage((cliCommand_t *)cmd);
-	}
-	else if (pwm < pwmLoValue || pwm > pwmHiValue) {
-	    sprintf(tempBuf, "PWM out of range: %d => %d\r\n", pwmLoValue, pwmHiValue);
-	    serialPrint(tempBuf);
+	if (state < ESC_STATE_RUNNING) {
+		serialPrint(runError);
 	}
 	else {
-	    if (runMode != SERVO_MODE)
-		runMode = OPEN_LOOP;
-	    runNewInput(pwm);
-	    sprintf(tempBuf, "PWM set to %d\r\n", pwm);
-	    serialPrint(tempBuf);
+		if (sscanf(cmdLine, "%hu", &pwm) != 1) {
+			cliUsage((cliCommand_t *)cmd);
+		}
+		else if (pwm < pwmLoValue || pwm > pwmHiValue) {
+			sprintf(tempBuf, "PWM out of range: %d => %d\r\n", pwmLoValue, pwmHiValue);
+			serialPrint(tempBuf);
+		}
+		else {
+			if (runMode != SERVO_MODE)
+				runMode = OPEN_LOOP;
+			runNewInput(pwm);
+			sprintf(tempBuf, "PWM set to %d\r\n", pwm);
+			serialPrint(tempBuf);
+		}
 	}
-    }
 }
 
-void cliFuncRpm(void *cmd, char *cmdLine) {
+static void cliFuncRpm(void *cmd, char *cmdLine) {
     float target;
 
     if (state < ESC_STATE_RUNNING) {
-	serialPrint(runError);
+		serialPrint(runError);
     }
     else {
 	if (sscanf(cmdLine, "%f", &target) != 1) {
@@ -344,10 +348,10 @@ void cliFuncRpm(void *cmd, char *cmdLine) {
 	    serialPrint("RPM out of range: 100 => 10000\r\n");
 	}
 	else {
-	    if (runMode != CLOSED_LOOP_RPM) {
-		runRpmPIDReset();
-		runMode = CLOSED_LOOP_RPM;
-	    }
+		if (runMode != CLOSED_LOOP_RPM) {
+			runRpmPIDReset();
+			runMode = CLOSED_LOOP_RPM;
+		}
 	    targetRpm = target;
 	    sprintf(tempBuf, "RPM set to %6.0f\r\n", target);
 	    serialPrint(tempBuf);
@@ -365,59 +369,59 @@ void cliPrintParam(int i) {
     serialPrint("\r\n");
 }
 
-void cliFuncSet(void *cmd, char *cmdLine) {
-    char param[32];
-    float value;
-    int i;
+static void cliFuncSet(void *cmd, char *cmdLine) {
+	char param[32];
+	float value;
+	int i;
 
-    if (sscanf(cmdLine, "%32s", param) != 1) {
-	cliUsage((cliCommand_t *)cmd);
-    }
-    else {
-	if (!strcasecmp(param, "list")) {
-	    for (i = 1; i < CONFIG_NUM_PARAMS; i++)
-		cliPrintParam(i);
+	if (sscanf(cmdLine, "%32s", param) != 1) {
+		cliUsage((cliCommand_t *)cmd);
 	}
 	else {
-	    i = configGetId(param);
-
-	    if (i < 0) {
-		sprintf(tempBuf, "SET: no such parameter '%s'\r\n", param);
-		serialPrint(tempBuf);
-	    }
-	    else {
-		if (sscanf(cmdLine + strlen(param)+1, "%f", &value) == 1) {
-		    if (state > ESC_STATE_STOPPED) {
-			sprintf(tempBuf, stopError);
-			serialPrint(tempBuf);
-		    }
-		    else {
-			configSetParamByID(i, value);
-			cliPrintParam(i);
-		    }
+		if (!strcasecmp(param, "list")) {
+			for (i = 1; i < CONFIG_NUM_PARAMS; i++)
+				cliPrintParam(i);
 		}
 		else {
-		    cliPrintParam(i);
+			i = configGetId(param);
+
+			if (i < 0) {
+				sprintf(tempBuf, "SET: no such parameter '%s'\r\n", param);
+				serialPrint(tempBuf);
+			}
+			else {
+				if (sscanf(cmdLine + strlen(param)+1, "%f", &value) == 1) {
+					if (state > ESC_STATE_STOPPED) {
+						sprintf(tempBuf, stopError);
+						serialPrint(tempBuf);
+					}
+					else {
+						configSetParamByID(i, value);
+						cliPrintParam(i);
+					}
+				}
+				else {
+					cliPrintParam(i);
+				}
+			}
 		}
-	    }
 	}
-    }
 }
 
-void cliFuncStart(void *cmd, char *cmdLine) {
-    if (state == ESC_STATE_DISARMED) {
-	serialPrint("ESC disarmed, arm first\r\n");
-    }
-    else if (state > ESC_STATE_STOPPED) {
-	serialPrint("ESC already running\r\n");
-    }
-    else {
-	runStart();
-	serialPrint("ESC started\r\n");
-    }
+static void cliFuncStart(void *cmd, char *cmdLine) {
+	if (state == ESC_STATE_DISARMED) {
+		serialPrint("ESC disarmed, arm first\r\n");
+	}
+	else if (state > ESC_STATE_STOPPED) {
+		serialPrint("ESC already running\r\n");
+	}
+	else {
+		runStart();
+		serialPrint("ESC started\r\n");
+	}
 }
 
-void cliFuncStatus(void *cmd, char *cmdLine) {
+static void cliFuncStatus(void *cmd, char *cmdLine) {
     const char *formatFloat = "%-12s%10.2f\r\n";
     const char *formatInt = "%-12s%10d\r\n";
     const char *formatString = "%-12s%10s\r\n";
@@ -467,138 +471,144 @@ void cliFuncStatus(void *cmd, char *cmdLine) {
 #endif
 }
 
-void cliFuncStop(void *cmd, char *cmdLine) {
-    if (state < ESC_STATE_NOCOMM) {
-	serialPrint(runError);
-    }
-    else {
-	runStop();
-	cliFuncChangeInput(ESC_INPUT_UART);
-	serialPrint("ESC stopping\r\n");
-    }
-}
-
-void cliFuncTelemetry(void *cmd, char *cmdLine) {
-    uint16_t freq;
-
-    if (sscanf(cmdLine, "%hu", &freq) != 1) {
-	cliUsage((cliCommand_t *)cmd);
-    }
-    else if (freq > 100) {
-	serialPrint("Frequency out of range: 0 => 100\r\n");
-    }
-    else {
-	if (freq > 0) {
-	    cliTelemetry = 1000/freq;
-	    serialPrint(cliHome);
-	    serialPrint(cliClear);
-	    serialWrite('\n');
+static void cliFuncStop(void *cmd, char *cmdLine) {
+	if (state < ESC_STATE_NOCOMM) {
+		serialPrint(runError);
 	}
-	else
-	    cliTelemetry = 0;
-    }
+	else {
+		runStop();
+		cliFuncChangeInput(ESC_INPUT_UART);
+		serialPrint("ESC stopping\r\n");
+	}
 }
 
-void cliFuncVer(void *cmd, char *cmdLine) {
+static void cliFuncTelemetry(void *cmd, char *cmdLine) {
+	uint16_t freq;
+
+	if (sscanf(cmdLine, "%hu", &freq) != 1) {
+		cliUsage((cliCommand_t *)cmd);
+	}
+	else if (freq > 100) {
+		serialPrint("Frequency out of range: 0 => 100\r\n");
+	}
+	else {
+		if (freq > 0) {
+			cliTelemetry = 1000/freq;
+			serialPrint(cliHome);
+			serialPrint(cliClear);
+			serialWrite('\n');
+		}
+		else
+			cliTelemetry = 0;
+	}
+}
+//显示版本
+static void cliFuncVer(void *cmd, char *cmdLine) {
     sprintf(tempBuf, "ESC32 ver %s\r\n", version);
     serialPrint(tempBuf);
 }
 
-int cliCommandComp(const void *c1, const void *c2) {
+//bsearch函数所使用的比较实现函数
+static int cliCommandComp(const void *c1, const void *c2) {
     const cliCommand_t *cmd1 = c1, *cmd2 = c2;
 
     return strncasecmp(cmd1->name, cmd2->name, strlen(cmd2->name));
 }
-
-cliCommand_t *cliCommandGet(char *name) {
+//根据name参数.从cliCommandTable表中找到对应的数组信息
+//如果没有找到.那么bsearch会返回空
+static cliCommand_t *cliCommandGet(char *name) {
     cliCommand_t target = {name, NULL};
 
     return bsearch(&target, cliCommandTable, CLI_N_CMDS, sizeof cliCommandTable[0], cliCommandComp);
 }
-
-void cliPrompt(void) {
+//清空缓冲区
+static void cliPrompt(void) {
     serialPrint("\r\n> ");
     memset(cliBuf, 0, sizeof(cliBuf));
     cliBufIndex = 0;
 }
 
 void cliCheck(void) {
-    cliCommand_t *cmd;
+	cliCommand_t *cmd;
 
-//    sprintf(tempBuf, "%f\r\n", rpm);
-//    serialPrint(tempBuf);
+	//    sprintf(tempBuf, "%f\r\n", rpm);
+	//    serialPrint(tempBuf);
 
-    if (cliTelemetry && !(runMilis % cliTelemetry)) {
-	serialPrint(cliHome);
-	sprintf(tempBuf, "Telemetry @ %d Hz\r\n\n", 1000/cliTelemetry);
-	serialPrint(tempBuf);
-	cliFuncStatus(cmd, "");
-	serialPrint("\n> ");
-	serialPrint(cliBuf);
-	serialPrint(cliClearEOL);
-    }
-
-    while (serialAvailable()) {
-	char c = serialRead();
-
-	cliBuf[cliBufIndex++] = c;
-	if (cliBufIndex == sizeof(cliBuf)) {
-	    cliBufIndex--;
-	    c = '\n';
+	if (cliTelemetry && !(runMilis % cliTelemetry)) {
+		serialPrint(cliHome);
+		sprintf(tempBuf, "Telemetry @ %d Hz\r\n\n", 1000/cliTelemetry);
+		serialPrint(tempBuf);
+		cliFuncStatus(cmd, "");
+		serialPrint("\n> ");
+		serialPrint(cliBuf);
+		serialPrint(cliClearEOL);
 	}
 
-	// EOL
-	if (cliBufIndex && (c == '\n' || c == '\r')) {
-	    if (cliBufIndex > 1) {
-		serialPrint("\r\n");
-		serialPrint(cliClearEOS);
-		cliBuf[cliBufIndex] = 0;
+	while (serialAvailable()) //如果串口收到数据.那么进入循环
+	{
+		char c = serialRead();
 
-		cmd = cliCommandGet(cliBuf);
-
-		if (cmd)
-		    cmd->cmdFunc(cmd, cliBuf + strlen(cmd->name));
-		else
-		    serialPrint("Command not found");
-
-		if (commandMode != CLI_MODE) {
-		    cliBufIndex = 0;
-		    return;
+		cliBuf[cliBufIndex++] = c;
+		if (cliBufIndex == sizeof(cliBuf)) {
+			cliBufIndex--;
+			c = '\n';
 		}
-	    }
 
-	    cliPrompt();
+		// EOL
+		if (cliBufIndex && (c == '\n' || c == '\r')) 
+		{
+			if (cliBufIndex > 1) 
+			{
+				//收到一个有效的命令.开始比较命令正确性.并相应的执行
+				serialPrint("\r\n");
+				serialPrint(cliClearEOS);
+				cliBuf[cliBufIndex] = 0;
+
+				cmd = cliCommandGet(cliBuf);//cliBuf来找到对应的数组
+
+				if (cmd)
+					cmd->cmdFunc(cmd, cliBuf + strlen(cmd->name));
+				else
+					serialPrint("Command not found");
+
+				if (commandMode != CLI_MODE) {
+					cliBufIndex = 0;
+					return;
+				}
+			}
+
+			cliPrompt();
+		}
+		// interrupt
+		else if (c == CLI_INTR) {
+			cliPrompt();
+		}
+		// backspace
+		else if (c == CLI_BS) {
+			if (cliBufIndex > 1) {
+				cliBuf[cliBufIndex-2] = 0;
+				serialPrint("\r> ");
+				serialPrint(cliBuf);
+				serialWrite(' ');
+				serialPrint("\r> ");
+				serialPrint(cliBuf);
+				cliBufIndex -= 2;
+			}
+			else {
+				cliBufIndex--;
+			}
+		}
+		// out of range character
+		else if (c < 32 || c > 126) {
+			serialWrite(CLI_BELL);
+			cliBufIndex--;
+		}
+		else {
+			serialWrite(c);
+		}
 	}
-	// interrupt
-	else if (c == CLI_INTR) {
-	    cliPrompt();
-	}
-	// backspace
-	else if (c == CLI_BS) {
-	    if (cliBufIndex > 1) {
-		cliBuf[cliBufIndex-2] = 0;
-		serialPrint("\r> ");
-		serialPrint(cliBuf);
-		serialWrite(' ');
-		serialPrint("\r> ");
-		serialPrint(cliBuf);
-		cliBufIndex -= 2;
-	    }
-	    else {
-		cliBufIndex--;
-	    }
-	}
-	// out of range character
-	else if (c < 32 || c > 126) {
-	    serialWrite(CLI_BELL);
-	    cliBufIndex--;
-	}
-	else {
-	    serialWrite(c);
-	}
-    }
 }
-
+//向串口打印一些信息
 void cliInit(void) {
     serialPrint(cliHome);
     serialPrint(cliClear);

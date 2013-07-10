@@ -36,6 +36,7 @@ digitalPin *tp;
 volatile uint32_t minCycles, idleCounter, totalCycles;
 //                最小周期                总共周期
 volatile uint8_t state, inputMode;
+//               运行状态  输入模式(控制方式 串口 iic can pwm)
 __asm void nop(void);
 
 int main(void) 
@@ -48,7 +49,7 @@ int main(void)
 	fetInit();
 	serialInit();  //串口初始化
 	runInit();
-	cliInit();
+	cliInit();     //向串口发送一些版本信息,串口数据处理也在这里面实现
 	owInit();
 
 	runDisarm(REASON_STARTUP);
@@ -63,8 +64,9 @@ int main(void)
 	fetBeep(300, 100);
 	fetBeep(200, 100);
 
-	pwmInit();
+	pwmInit(); //PWM IN初始化
 
+	//LED初始化
 	statusLed = digitalInit(GPIO_STATUS_LED_PORT, GPIO_STATUS_LED_PIN);
 	digitalHi(statusLed);
 	errorLed = digitalInit(GPIO_ERROR_LED_PORT, GPIO_ERROR_LED_PIN);

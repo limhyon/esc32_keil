@@ -80,7 +80,7 @@
 #define DEFAULT_SERVO_SCALE		360.0f	    // deg
 
 #define FLASH_PAGE_SIZE			((uint16_t)0x400)
-#define FLASH_WRITE_ADDR		(0x08000000 + (uint32_t)FLASH_PAGE_SIZE * 63)    // use the last KB for storage
+#define FLASH_WRITE_ADDR		(0x08000000 + (uint32_t)FLASH_PAGE_SIZE * 63)    // use the last KB for storage 配置参数保存地址
 
 enum configParameters {
     CONFIG_VERSION = 0,
