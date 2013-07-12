@@ -25,12 +25,12 @@
 #include "stm32f10x_tim.h"
 #include "misc.h"
 
-int16_t pwmMinPeriod;
-int16_t pwmMaxPeriod;
+static int16_t pwmMinPeriod;
+static int16_t pwmMaxPeriod;
 int16_t pwmMinValue;
 int16_t pwmLoValue;
 int16_t pwmHiValue;
-int16_t pwmMaxValue;
+static int16_t pwmMaxValue;
 int16_t pwmMinStart;
 volatile uint32_t pwmValidMicros;
 
@@ -123,8 +123,12 @@ void PWM_IRQ_HANDLER(void) {
 	pwmValue = PWM_TIM->CCR2;
 
 	// is this an OW reset pulse?
-	if (state == ESC_STATE_DISARMED && edge == 1 && (periodValue - pwmValue) > OW_RESET_MIN && (periodValue - pwmValue) < OW_RESET_MAX) {
-		owReset();
+	if (state == ESC_STATE_DISARMED && 
+		edge == 1 && 
+		(periodValue - pwmValue) > OW_RESET_MIN && 
+		(periodValue - pwmValue) < OW_RESET_MAX) 
+	{
+		owReset();//ow的初始化,在调用owEdgeDetect前一定要先调用
 	}
 	// look for good RC PWM input
 	else if (inputMode == ESC_INPUT_PWM && periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue) 
@@ -136,6 +140,7 @@ void PWM_IRQ_HANDLER(void) {
 	}
 	// otherwise if already in OW mode, pass control to OW
 	else if (inputMode == ESC_INPUT_OW) {
+		//是1wire通讯协议
 		owEdgeDetect(edge);
 	}
 }
@@ -143,8 +148,9 @@ void PWM_IRQ_HANDLER(void) {
 void pwmSetConstants(void) {
     float rpmScale = p[PWM_RPM_SCALE];
 
-    pwmMinPeriod = p[PWM_MIN_PERIOD] = (int)p[PWM_MIN_PERIOD];
-    pwmMaxPeriod = p[PWM_MAX_PERIOD] = (int)p[PWM_MAX_PERIOD];
+    pwmMinPeriod = p[PWM_MIN_PERIOD] = (int)p[PWM_MIN_PERIOD];//最小周期
+    pwmMaxPeriod = p[PWM_MAX_PERIOD] = (int)p[PWM_MAX_PERIOD];//最大周期
+
     pwmMinValue = p[PWM_MIN_VALUE] = (int)p[PWM_MIN_VALUE];
     pwmLoValue = p[PWM_LO_VALUE] = (int)p[PWM_LO_VALUE];
     pwmHiValue = p[PWM_HI_VALUE] = (int)p[PWM_HI_VALUE];

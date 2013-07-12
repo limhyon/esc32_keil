@@ -36,7 +36,7 @@
 #define NOPS_4			{NOP; NOP; NOP; NOP;}
 
 enum escStates {
-    ESC_STATE_DISARMED = 0,
+    ESC_STATE_DISARMED = 0,  //pwm模块中.用于复位ow
     ESC_STATE_STOPPED,
     ESC_STATE_NOCOMM,
     ESC_STATE_STARTING,

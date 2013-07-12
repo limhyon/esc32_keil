@@ -25,9 +25,9 @@
 #define PWM_PORT	    GPIOA
 #define PWM_PIN		    GPIO_Pin_8
 
-#define PWM_OUTPUT	    {PWM_PORT->CRH = (PWM_PORT->CRH & ~0x0f) | 0x03;}
-#define PWM_INPUT	    {PWM_PORT->CRH = (PWM_PORT->CRH & ~0x0f) | 0x04;}
-#define PWM_SAMPLE_LEVEL    ((PWM_PORT->IDR & (0x01<<8))>>8)
+#define PWM_OUTPUT	    {PWM_PORT->CRH = (PWM_PORT->CRH & ~0x0f) | 0x03;} //GPIOA_8配置为输出模式50MHZ
+#define PWM_INPUT	    {PWM_PORT->CRH = (PWM_PORT->CRH & ~0x0f) | 0x04;} //GPIOA_8配置为浮空输入模式
+#define PWM_SAMPLE_LEVEL    ((PWM_PORT->IDR & (0x01<<8))>>8) //读取GPIOA_8的IO数据
 
 #define PWM_TIM		    TIM1
 #define PWM_CHANNEL	    TIM_Channel_1

@@ -23,7 +23,7 @@
 digitalPin *digitalInit(GPIO_TypeDef* port, const uint16_t pin) 
 {
 	digitalPin *p;
-	uint16_t clock;
+//	uint16_t clock;
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	p = (digitalPin *)calloc(1, sizeof(digitalPin));

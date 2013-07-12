@@ -102,7 +102,7 @@ void cliUsage(cliCommand_t *cmd) {
     serialPrint(cmd->params);
     serialPrint("\r\n");
 }
-//设置控制模式(串口 can iic pwm)
+//设置控制模式(串口 can iic pwm ow)
 static void cliFuncChangeInput(uint8_t input) {
 	if (inputMode != input) {
 		inputMode = input;
@@ -530,9 +530,6 @@ static void cliPrompt(void) {
 
 void cliCheck(void) {
 	cliCommand_t *cmd;
-
-	//    sprintf(tempBuf, "%f\r\n", rpm);
-	//    serialPrint(tempBuf);
 
 	if (cliTelemetry && !(runMilis % cliTelemetry)) {
 		serialPrint(cliHome);

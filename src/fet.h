@@ -68,13 +68,13 @@
 
 // bit band address turn switch on or off PWM output
 // HI side
-#define AH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (27*4)))
-#define BH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (31*4)))
-#define CH_BITBAND		((uint32_t *)(0x42000000 + (0x10C04*32) + (3*4)))
+#define AH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (27*4)))//GPIOB_6
+#define BH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (31*4)))//GPIOB_7
+#define CH_BITBAND		((uint32_t *)(0x42000000 + (0x10C04*32) + (3*4))) //GPIOB_8
 // LO side
-#define AL_BITBAND		((uint32_t *)(0x42000000 + (0x10800*32) + (31*4)))
-#define BL_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (3*4)))
-#define CL_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (7*4)))
+#define AL_BITBAND		((uint32_t *)(0x42000000 + (0x10800*32) + (31*4)))//GPIOA_7
+#define BL_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (3*4))) //GPIOB_0
+#define CL_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (7*4))) //GPIOB_1
 
 #define FET_MASTER_TIMER        TIM3
 #define FET_MASTER_DBGMCU_STOP  DBGMCU_TIM3_STOP

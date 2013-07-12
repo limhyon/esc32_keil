@@ -48,6 +48,7 @@ uint8_t runArmCount;
 volatile uint8_t runMode;//运行模式
 float maxThrust;
 
+//执行看门狗喂狗
 void runFeedIWDG(void) {
 #ifdef RUN_ENABLE_IWDG
     IWDG_ReloadCounter();

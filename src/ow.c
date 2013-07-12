@@ -15,7 +15,23 @@
 
     Copyright © 2011, 2012  Bill Nesbitt
 */
-
+/*
+ * 此文件是1wire的通讯协议的实现,在pwm.c中,会产生pwm捕获中断,然后调用owEdgeDetect函数.来收发数据,处理
+ * 复位，初始化：
+ * 1、owReset 必须先调用此函数
+ * 2、inputMode设置变量，输入模式为ow
+ * 3、owResetIsr 进行进一步初始化
+ * 
+ * 数据的接收：
+ * 1、pwm.c文件，PWM_IRQ_HANDLER中断函数中，会调用owEdgeDetect函数
+ * 2、owEdgeDetect 判断是收数据还是发送数据，如果是接收数据
+ * 3、	owReadBitIsr 函数中，读取GPIO的值，然后将数据放入owByteValue变量中，同时owBit加1，
+ * 4、		owByteReceived 函数中，当owBit接收完成了一个字节后，才会调用，然后继续判断是否还有数据要接收，如果全部接收完则解析数据
+ * 5、			命令解析
+ * 数据的发送：
+ * 1、pwm.c文件，PWM_IRQ_HANDLER中断函数中，会调用owEdgeDetect函数
+ * 2、owEdgeDetect 判断是收数据还是发送数据
+ */
 #include "ow.h"
 #include "main.h"
 #include "timer.h"
@@ -24,17 +40,18 @@
 #include "cli.h"
 #include <string.h>
 
-uint8_t owROMCode[8];
-uint8_t owBuf[16];
-uint8_t *owBufPointer;
-uint8_t owState;
-uint8_t owLastCommand;
-uint8_t owByteValue;
-uint8_t owReadNum;
-uint8_t owWriteNum;
-uint8_t owBit;
+static uint8_t owROMCode[8];
+static uint8_t owBuf[16];       //接收到的数据实际就是放入这里.
+static uint8_t *owBufPointer;   //接收到的数据放入到这里，如果是要发送则从此变量中发送数据  指向owBuf数据的指针
+static uint8_t owState;/*对应     OW_RESET_STATE_0, OW_RESET_STATE_1, OW_RESET_STATE_2, OW_READ, OW_WRITE 几种不同的状态 一般只会出现READ或WRITE的情况 */
+static uint8_t owLastCommand;
 
-uint8_t owCRC(uint8_t inData, uint8_t seed) {
+static uint8_t owByteValue;//读取到的值.或要发送的数据都放在这里  (当前值)
+static uint8_t owReadNum;  //当前还要读取的数据个数
+static uint8_t owWriteNum; //当前要发送的数据个数
+static uint8_t owBit;      //一个字节一共有8个位,代表当前操作的是第几个位 范围0~7
+
+static uint8_t owCRC(uint8_t inData, uint8_t seed) {
 	uint8_t bitsLeft;
 	uint8_t temp;
 
@@ -69,26 +86,26 @@ void owInit(void) {
 		owROMCode[7] = owCRC(owROMCode[i], owROMCode[7]);
 }
 
-void owPullLow(void) {
+static void owPullLow(void) {
     pwmIsrAllOff();
     PWM_OUTPUT;
 }
 
-void owRelease(void) {
+static void owRelease(void) {
     PWM_INPUT;
     pwmIsrRunOn();
 }
 
-void owTimeout(int i) {
+static void owTimeout(int i) {
     timerSetAlarm3(i*TIMER_MULT, owTimeoutIsr, 0);
 }
-
+//复位初始化函数
 void owReset(void) {
     inputMode = ESC_INPUT_OW;
     owResetIsr(OW_RESET_STATE_0);
 }
 
-void owReadBytes(uint8_t num) {
+static void owReadBytes(uint8_t num) {
     owTimeout(300);
 
     owReadNum = num;
@@ -96,7 +113,7 @@ void owReadBytes(uint8_t num) {
     owBit = 0;
 }
 
-void owWriteBytes(uint8_t num) {
+static void owWriteBytes(uint8_t num) {
     owTimeout(300);
 
     owByteValue = *owBufPointer;
@@ -105,142 +122,144 @@ void owWriteBytes(uint8_t num) {
 }
 
 // command parser
-void owReadComplete(void) {
-    uint8_t *pointer;
+static void owReadComplete(void) {
+	uint8_t *pointer;
 
-    switch (owBuf[0]) {
-	case OW_ROM_MATCH:
-	    if (owLastCommand != owBuf[0]) {
-		owLastCommand = owBuf[0];
-		// read an additional 8 bytes
-		owBufPointer = &owBuf[1];
-		owReadBytes(8);
-	    }
-	    else {
-		owLastCommand = 0x00;
-		// does the ROM code match ours?
-		if (!memcmp(&owBuf[1], owROMCode, 8)) {
-		    // prepare to read next command
-		    owBufPointer = owBuf;
-		    owReadBytes(1);
+	switch (owBuf[0]) 
+	{
+	case OW_ROM_MATCH://比较ROM版本
+		if (owLastCommand != owBuf[0]) {
+			owLastCommand = owBuf[0];
+			// read an additional 8 bytes
+			owBufPointer = &owBuf[1];
+			owReadBytes(8);
 		}
 		else {
-		    // terminate transaction
-		    owTimeoutIsr(0);
+			owLastCommand = 0x00;
+			// does the ROM code match ours?
+			if (!memcmp(&owBuf[1], owROMCode, 8)) {
+				// prepare to read next command
+				owBufPointer = owBuf;
+				owReadBytes(1);
+			}
+			else {
+				// terminate transaction
+				owTimeoutIsr(0);
+			}
 		}
-	    }
-	    break;
+		break;
 
-	case OW_ROM_SKIP:
-	    // prepare to read next command
-	    owBufPointer = owBuf;
-	    owReadBytes(1);
-	break;
-
-	case OW_ROM_READ:
-	    // prepare to write out ROM CODE (8 bytes)
-	    owState = OW_WRITE;
-	    owBufPointer = owROMCode;
-	    owWriteBytes(8);
-	break;
-
-	case OW_VERSION:
-	    owState = OW_WRITE;
-	    owBufPointer = (uint8_t *)version;
-	    owWriteBytes(sizeof(version));
-	break;
-
-	case OW_PARAM_READ:
-	    if (owLastCommand != owBuf[0]) {
-		owLastCommand = owBuf[0];
-		// read an additional 1 bytes
-		owBufPointer = &owBuf[1];
+	case OW_ROM_SKIP://跳过本条命令
+		// prepare to read next command
+		owBufPointer = owBuf;
 		owReadBytes(1);
-	    }
-	    else {
-		owLastCommand = 0x00;
-		if (owBuf[1] < CONFIG_NUM_PARAMS) {
-		    // copy config value into send buffer
-		    pointer = (uint8_t *)&(p[owBuf[1]]);
-		    owBuf[2] = pointer[0];
-		    owBuf[3] = pointer[1];
-		    owBuf[4] = pointer[2];
-		    owBuf[5] = pointer[3];
+		break;
 
-		    owState = OW_WRITE;
-		    owBufPointer = owBuf;
-		    owWriteBytes(6);
+	case OW_ROM_READ://ROMCODE
+		// prepare to write out ROM CODE (8 bytes)
+		owState = OW_WRITE;
+		owBufPointer = owROMCode;
+		owWriteBytes(8);
+		break;
+
+	case OW_VERSION://显示版本
+		owState = OW_WRITE;
+		owBufPointer = (uint8_t *)version;
+		owWriteBytes(sizeof(version));
+		break;
+
+
+	case OW_PARAM_READ://读取参数
+		if (owLastCommand != owBuf[0]) {
+			owLastCommand = owBuf[0];
+			// read an additional 1 bytes
+			owBufPointer = &owBuf[1];
+			owReadBytes(1);
 		}
-	    }
-	break;
+		else {
+			owLastCommand = 0x00;
+			if (owBuf[1] < CONFIG_NUM_PARAMS) {
+				// copy config value into send buffer
+				pointer = (uint8_t *)&(p[owBuf[1]]);
+				owBuf[2] = pointer[0];
+				owBuf[3] = pointer[1];
+				owBuf[4] = pointer[2];
+				owBuf[5] = pointer[3];
 
-	case OW_PARAM_WRITE:
-	    if (owLastCommand != owBuf[0]) {
-		owLastCommand = owBuf[0];
-		// read an additional 5 bytes
-		owBufPointer = &owBuf[1];
-		owReadBytes(5);
-	    }
-	    else {
-		owLastCommand = 0x00;
-		if (owBuf[1] < CONFIG_NUM_PARAMS) {
-		    // set parameter
-		    configSetParamByID(owBuf[1], *(float *)(&owBuf[2]));
-
-		    // copy config value into send buffer
-		    pointer = (uint8_t *)&p[owBuf[1]];
-		    owBuf[2] = pointer[0];
-		    owBuf[3] = pointer[1];
-		    owBuf[4] = pointer[2];
-		    owBuf[5] = pointer[3];
-
-		    owState = OW_WRITE;
-		    owBufPointer = owBuf;
-		    owWriteBytes(6);
+				owState = OW_WRITE;
+				owBufPointer = owBuf;
+				owWriteBytes(6);
+			}
 		}
-	}
-	break;
+		break;
 
-	case OW_CONFIG_READ:
-	    configReadFlash();
+	case OW_PARAM_WRITE://设置参数
+		if (owLastCommand != owBuf[0]) {
+			owLastCommand = owBuf[0];
+			// read an additional 5 bytes
+			owBufPointer = &owBuf[1];
+			owReadBytes(5);
+		}
+		else {
+			owLastCommand = 0x00;
+			if (owBuf[1] < CONFIG_NUM_PARAMS) {
+				// set parameter
+				configSetParamByID(owBuf[1], *(float *)(&owBuf[2]));
 
-	    // return command ack
-	    owState = OW_WRITE;
-	    owBufPointer = owBuf;
-	    owWriteBytes(1);
-	break;
+				// copy config value into send buffer
+				pointer = (uint8_t *)&p[owBuf[1]];
+				owBuf[2] = pointer[0];
+				owBuf[3] = pointer[1];
+				owBuf[4] = pointer[2];
+				owBuf[5] = pointer[3];
+
+				owState = OW_WRITE;
+				owBufPointer = owBuf;
+				owWriteBytes(6);
+			}
+		}
+		break;
+
+
+	case OW_CONFIG_READ://从Flash上读取配置
+		configReadFlash();
+		// return command ack
+		owState = OW_WRITE;
+		owBufPointer = owBuf;
+		owWriteBytes(1);
+		break;
 
 	// required 30ms to complete
-	case OW_CONFIG_WRITE:
-	    configWriteFlash();
-	break;
+	case OW_CONFIG_WRITE://将配置文件写入到Flash上
+		configWriteFlash();
+		break;
 
-	case OW_CONFIG_DEFAULT:
-	    configLoadDefault();
+	case OW_CONFIG_DEFAULT://加载默认的配置文件
+		configLoadDefault();
+		// return command ack
+		owState = OW_WRITE;
+		owBufPointer = owBuf;
+		owWriteBytes(1);
+		break;
 
-	    // return command ack
-	    owState = OW_WRITE;
-	    owBufPointer = owBuf;
-	    owWriteBytes(1);
-	break;
 
-	case OW_GET_MODE:
-	    owBuf[0] = OW_GET_MODE;
-	    owBuf[1] = runMode;
-	    
-	    owState = OW_WRITE;
-	    owBufPointer = owBuf;
-	    owWriteBytes(2);
-	break;
-	
-	case OW_SET_MODE:
-	    if (owLastCommand != owBuf[0]) {
-		owLastCommand = owBuf[0];
-		// read an additional 1 byte
-		owBufPointer = &owBuf[1];
-		owReadBytes(1);
-	    }
-	    else {
+	case OW_GET_MODE://获取运行模式
+		owBuf[0] = OW_GET_MODE;
+		owBuf[1] = runMode;
+
+		owState = OW_WRITE;
+		owBufPointer = owBuf;
+		owWriteBytes(2);
+		break;
+
+	case OW_SET_MODE://设置运行模式
+		if (owLastCommand != owBuf[0]) {
+			owLastCommand = owBuf[0];
+			// read an additional 1 byte
+			owBufPointer = &owBuf[1];
+			owReadBytes(1);
+		}
+		else {
 			owLastCommand = 0x00;
 			if (owBuf[1] >= 0 && owBuf[1] < NUM_RUN_MODES) {
 				runMode = owBuf[1];
@@ -249,50 +268,52 @@ void owReadComplete(void) {
 				owBufPointer = owBuf;
 				owWriteBytes(2);
 			}
-	    }
-	    ;
-	break;
-    }
+		}
+		;
+		break;
+	}
 }
 
-void owWriteComplete(void) {
+//数据全部发送完成
+static void owWriteComplete(void) {
     // we're finished with the transaction
     owTimeoutIsr(0);
 }
 
-void owByteReceived(void) {
+static void owByteReceived(void) {
 	*(owBufPointer++) = owByteValue;
 
 	owTimeout(300);
 
 	if (--owReadNum > 0)
-		owReadBytes(owReadNum);
+		owReadBytes(owReadNum);//还有数据要接收的
 	else
-		owReadComplete();
+		owReadComplete();      //数据都接收完成了.命令解析
 }
 
-void owByteSent(void) {
+static void owByteSent(void) {
 	owBufPointer++;
 
 	owTimeout(300);
 
 	if (--owWriteNum > 0)
-		owWriteBytes(owWriteNum);
+		owWriteBytes(owWriteNum);  //还有剩余的数据还没发送完成
 	else
-		owWriteComplete();
+		owWriteComplete();         //数据全部发送完成
 }
 
+//此函数在pwm.c文件中,PWM中断函数里调用
 void owEdgeDetect(uint8_t edge) {
 	if (edge == 0) {
 		switch (owState) {
-		case OW_READ:
+		case OW_READ://读取数据
 			// read bit in 15us
 			pwmIsrAllOff();
 			owRelease();
 			timerSetAlarm3(15*TIMER_MULT, owReadBitIsr, 0);
 			break;
 
-		case OW_WRITE:
+		case OW_WRITE://写数据
 			// write bit
 			owRelease();
 			owWriteBitIsr(0);
@@ -301,7 +322,7 @@ void owEdgeDetect(uint8_t edge) {
 	}
 }
 
-void owResetIsr(int state) {
+static void owResetIsr(int state) {
 	switch (state) {
 	case OW_RESET_STATE_0:
 		// wait 15us
@@ -322,10 +343,10 @@ void owResetIsr(int state) {
 		digitalLo(statusLed);
 
 		// prepare to read a byte
-		owState = OW_READ;
-		owBufPointer = owBuf;
+		owState = OW_READ;     //设置为接收模式
+		owBufPointer = owBuf;  //设置指针
 		owLastCommand = 0x00;
-		owReadBytes(1);
+		owReadBytes(1);        //先设置接收一个字节
 
 		// 15ms timeout
 		owTimeout(15000);
@@ -333,8 +354,8 @@ void owResetIsr(int state) {
 	}
 }
 
-void owReadBitIsr(int unused) {
-    // sample bus
+static void owReadBitIsr(int unused) {
+    // sample bus  读取GPIO，将数据放入owByteValue变量中
     owByteValue |= (PWM_SAMPLE_LEVEL<<owBit);
 
     // wait for next write slot
@@ -344,19 +365,25 @@ void owReadBitIsr(int unused) {
 
     // is byte complete?
     if (++owBit > 7)
-		owByteReceived();
+		owByteReceived(); //接收到8位数据了.组成一个字节
 }
 
-void owWriteBitIsr(int state) {
-	// write bit
-	if (state == 0) {
+static void owWriteBitIsr(int state) 
+{	
+	if (state == 0) 
+	{
+		// write bit
 		// only 0 bits need action, 1 bits let the bus rise on its own
-		if (!(owByteValue & (0x01<<owBit++))) {
+		if (!(owByteValue & (0x01<<owBit++))) 
+		{
+			//发数据0
 			owPullLow();
 			// schedule release
 			timerSetAlarm3(30*TIMER_MULT, owWriteBitIsr, 1);
 		}
-		else {
+		else 
+		{
+			//发数据1
 			owTimeout(150);
 
 			// finished with this byte
@@ -365,7 +392,8 @@ void owWriteBitIsr(int state) {
 		}
 	}
 	// release bus
-	else {
+	else 
+	{
 		owRelease();
 
 		owTimeout(150);
@@ -376,7 +404,7 @@ void owWriteBitIsr(int state) {
 	}
 }
 
-void owTimeoutIsr(int unused) {
+static void owTimeoutIsr(int unused) {
     timerCancelAlarm3();
     // revert to listening for PWM & OW
     owRelease();

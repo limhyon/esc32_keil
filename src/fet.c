@@ -46,36 +46,36 @@
     ----------------------------------------------------------
 */
 
-uint32_t AH[7] = {  0,      1,      0,      0,      0,      0,      1};
-uint32_t AL[7] = {AL_OFF, AL_OFF, AL_OFF, AL_ON,  AL_ON,  AL_OFF, AL_OFF};
-uint32_t BH[7] = {  0,      0,      0,      0,      1,      1,      0};
-uint32_t BL[7] = {BL_ON,  BL_ON,  BL_ON,  BL_OFF, BL_OFF, BL_OFF, BL_OFF};	// note: step 0 has B_LO energized
-uint32_t CH[7] = {  0,      0,      1,      1,      0,      0,      0};
-uint32_t CL[7] = {CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_ON,  CL_ON};
+static uint32_t AH[7] = {  0,      1,      0,      0,      0,      0,      1};
+static uint32_t AL[7] = {AL_OFF, AL_OFF, AL_OFF, AL_ON,  AL_ON,  AL_OFF, AL_OFF};
+static uint32_t BH[7] = {  0,      0,      0,      0,      1,      1,      0};
+static uint32_t BL[7] = {BL_ON,  BL_ON,  BL_ON,  BL_OFF, BL_OFF, BL_OFF, BL_OFF};	// note: step 0 has B_LO energized
+static uint32_t CH[7] = {  0,      0,      1,      1,      0,      0,      0};
+static uint32_t CL[7] = {CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_ON,  CL_ON};
 
-int32_t fetSwitchFreq;
-int32_t fetStartDuty;
+static int32_t fetSwitchFreq;
+static int32_t fetStartDuty;
 int16_t fetStartDetects;
 int16_t fetDisarmDetects;
 int32_t fetPeriod;
 int32_t fetActualDutyCycle;
 volatile int32_t fetDutyCycle;
 volatile uint8_t fetStep;
-volatile uint8_t fetNextStep;
+static volatile uint8_t fetNextStep;
 volatile uint32_t fetGoodDetects;
 volatile uint32_t fetBadDetects;
 volatile uint32_t fetTotalBadDetects;
 volatile uint32_t fetCommutationMicros;
 int8_t fetBrakingEnabled;
 int8_t fetBraking;
-int16_t startSeqCnt;
-int8_t  startSeqStp;
-float fetServoAngle;
-float fetServoMaxRate;
+static int16_t startSeqCnt;
+static int8_t  startSeqStp;
+static float fetServoAngle;
+static float fetServoMaxRate;
 
 int16_t fetSine[FET_SERVO_RESOLUTION];
 
-void fetCreateSine(void) {
+static void fetCreateSine(void) {
 	float a;
 	int i;
 
@@ -161,7 +161,7 @@ void fetSetAngle(float angle) {
 }
 
 #define FET_TEST_DELAY	1000
-
+#if 0
 uint8_t fetSelfTest(void) {
 	int32_t baseCurrent;
 	int32_t cl1, cl2, cl3;
@@ -294,6 +294,7 @@ uint8_t fetSelfTest(void) {
 
 	return FET_TEST_PASSED;
 }
+#endif
 
 extern __asm void CPSID_I(void);
 extern __asm void CPSIE_I(void);
@@ -384,12 +385,12 @@ void _fetSetDutyCycle(int32_t dutyCycle) {
 }
 
 void fetSetDutyCycle(int32_t requestedDutyCycle) {
-    if (requestedDutyCycle > fetPeriod)
-	requestedDutyCycle = fetPeriod;
-    else if (requestedDutyCycle < 0)
-	requestedDutyCycle = 0;
+	if (requestedDutyCycle > fetPeriod)
+		requestedDutyCycle = fetPeriod;
+	else if (requestedDutyCycle < 0)
+		requestedDutyCycle = 0;
 
-    fetDutyCycle = requestedDutyCycle;
+	fetDutyCycle = requestedDutyCycle;
 }
 
 //
@@ -397,8 +398,8 @@ void fetSetDutyCycle(int32_t requestedDutyCycle) {
 // High side FET switching is accomplished by enabling or disabling
 // control of the output pin by the PWM timer.  When disabled, the
 // GPIO output state is imposed on the pin (FET off.)
-//
-void fetSetStep(int n) {
+// 设置FET下一步
+static void fetSetStep(int n) {
     //__asm volatile ("cpsid i");
 	CPSID_I();
     fetCommutationMicros = timerGetMicros();
@@ -407,23 +408,23 @@ void fetSetStep(int n) {
 
     fetNextStep = n + 1;
     if (fetNextStep > 6)
-	fetNextStep = 1;
+		fetNextStep = 1;
 
     // set high side
-    *AH_BITBAND = AH[n];
-    *BH_BITBAND = BH[n];
-    *CH_BITBAND = CH[n];
+    *AH_BITBAND = AH[n];//GPIOB_6
+    *BH_BITBAND = BH[n];//GPIOB_7
+    *CH_BITBAND = CH[n];//GPIOB_8
 
     if (fetBrakingEnabled)
-	fetSetBraking(fetBraking);
+		fetSetBraking(fetBraking);
 
     // set low side
-    FET_A_L_PORT->BSRR = AL[n];
-    FET_B_L_PORT->BSRR = BL[n];
-    FET_C_L_PORT->BSRR = CL[n];
+    FET_A_L_PORT->BSRR = AL[n];//GPIOA_7
+    FET_B_L_PORT->BSRR = BL[n];//GPIOB_0
+    FET_C_L_PORT->BSRR = CL[n];//GPIOB_1
 }
 
-void fetSetBaseTime(int32_t period) {
+static void fetSetBaseTime(int32_t period) {
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
@@ -452,52 +453,59 @@ void fetInit(void) {
     fetDutyCycle = fetPeriod;
     fetStep = 0;
 
+	//////////////////////////////////////////////////////////////////////////
     // setup low side gates
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-    // A
+    // A GPIOA_7
     GPIO_InitStructure.GPIO_Pin = FET_A_L_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(FET_A_L_PORT, &GPIO_InitStructure);
 
-    // B
+    // B GPIOB_0
     GPIO_InitStructure.GPIO_Pin = FET_B_L_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(FET_B_L_PORT, &GPIO_InitStructure);
 
-    // C
+    // C GPIOB_1
     GPIO_InitStructure.GPIO_Pin = FET_C_L_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(FET_C_L_PORT, &GPIO_InitStructure);
 
+	//////////////////////////////////////////////////////////////////////////
     // setup GPIO default output states for high side
-
-    // A
+    // A GPIOB_6
     GPIO_InitStructure.GPIO_Pin = FET_A_H_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(FET_A_H_PORT, &GPIO_InitStructure);
 
-    // B
+    // B GPIOB_7
     GPIO_InitStructure.GPIO_Pin = FET_B_H_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(FET_B_H_PORT, &GPIO_InitStructure);
 
-    // C
+    // C GPIOB_8
     GPIO_InitStructure.GPIO_Pin = FET_C_H_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(FET_C_H_PORT, &GPIO_InitStructure);
 
-    // high side N-FET is inactive low
-    FET_A_H_PORT->BSRR = AH_OFF;
-    FET_B_H_PORT->BSRR = BH_OFF;
-    FET_C_H_PORT->BSRR = CH_OFF;
+    // high side N-FET is inactive low 将对应的IO设置为低电平
+    FET_A_H_PORT->BSRR = AH_OFF;//GPIOB_6
+    FET_B_H_PORT->BSRR = BH_OFF;//GPIOB_7
+    FET_C_H_PORT->BSRR = CH_OFF;//GPIOB_8
 
+	//////////////////////////////////////////////////////////////////////////
+	//在jtag调试时候.停止定时器
     // allow FET PWM (slave) to run during core halt
-    DBGMCU_Config(FET_DBGMCU_STOP, ENABLE);
-
+    DBGMCU_Config(FET_DBGMCU_STOP, ENABLE);//timer4
     // stop MASTER during core halt
-    DBGMCU_Config(FET_MASTER_DBGMCU_STOP, ENABLE);
+    DBGMCU_Config(FET_MASTER_DBGMCU_STOP, ENABLE);//timer3
 
+
+	//////////////////////////////////////////////////////////////////////////
+	//配置timer3
+	//中央对齐模式，TIMx_ARR寄存器被装入缓冲器，
+	//CC2、CC3、CC4为输出模式，输出比较预装载使能，PWM模式1
     // setup LO side inverted PWM for FET braking (if enabled)
     TIM_OCStructInit(&TIM_OCInitStructure);
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
@@ -522,6 +530,11 @@ void fetInit(void) {
     // now setup the FET driver PWM timer (slave)
     FET_H_TIMER_REMAP;
 
+
+	//////////////////////////////////////////////////////////////////////////
+	//配置timer4
+	//中央对齐模式，TIMx_ARR寄存器被装入缓冲器，
+	//CC1、CC2、CC3为输出模式，输出比较预装载使能，PWM模式1
     TIM_OCStructInit(&TIM_OCInitStructure);
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
     TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
@@ -542,26 +555,31 @@ void fetInit(void) {
 
     TIM_ARRPreloadConfig(FET_H_TIMER, ENABLE);
 
-    TIM_Cmd(FET_H_TIMER, ENABLE);
-    TIM_Cmd(FET_MASTER_TIMER, ENABLE);
+	//开启时钟
+    TIM_Cmd(FET_H_TIMER, ENABLE);     //开启TIMER4模块
+    TIM_Cmd(FET_MASTER_TIMER, ENABLE);//开启TIMER3模块
+
 
     FET_H_TIMER->CNT = 0;
     FET_MASTER_TIMER->CNT = 0;
 
+
+	//////////////////////////////////////////////////////////////////////////
+	//设置timer4和timer3的GPIO
     // now set AF mode for the high side gates
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-    // A
+    // A GPIOB_6
     GPIO_InitStructure.GPIO_Pin = FET_A_H_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(FET_A_H_PORT, &GPIO_InitStructure);
 
-    // B
+    // B GPIOB_7
     GPIO_InitStructure.GPIO_Pin = FET_B_H_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(FET_B_H_PORT, &GPIO_InitStructure);
 
-    // C
+    // C GPIOB_8
     GPIO_InitStructure.GPIO_Pin = FET_C_H_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(FET_C_H_PORT, &GPIO_InitStructure);
@@ -703,6 +721,7 @@ void motorStartSeq(int period) {
 	startSeqCnt++;
 }
 
+#if 0
 void fetTest(void) {
     fetSetStep(1);
 
@@ -747,6 +766,7 @@ void fetTest(void) {
     //__asm volatile ("cpsie i");
 	CPSIE_I();
 }
+#endif
 
 void fetSetConstants(void) {
     float switchFreq = p[SWITCH_FREQ];

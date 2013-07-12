@@ -44,16 +44,16 @@ uint32_t timerGetMicros(void) {
 
 //使用timer2做延时
 void timerDelay(uint16_t us) {
-    uint16_t cnt = TIMER_TIM->CNT;
-    uint16_t targetTimerVal = cnt + us*TIMER_MULT;
+	uint16_t cnt = TIMER_TIM->CNT;
+	uint16_t targetTimerVal = cnt + us*TIMER_MULT;
 
-    if (targetTimerVal < cnt)
-	// wait till timer rolls over
-	while (TIMER_TIM->CNT > targetTimerVal)
-	    ;
+	if (targetTimerVal < cnt)
+		// wait till timer rolls over
+		while (TIMER_TIM->CNT > targetTimerVal)
+			;
 
-    while (TIMER_TIM->CNT < targetTimerVal)
-	    ;
+	while (TIMER_TIM->CNT < targetTimerVal)
+		;
 }
 
 //取消通道1,比较中断
@@ -175,7 +175,7 @@ void timerSetAlarm2(int32_t ticks, timerCallback_t *callback, int parameter) {
 		TIMER_TIM->DIER |= TIM_IT_CC2;
     }
 }
-
+//被ow.c使用.主要用于1wire协议
 void timerSetAlarm3(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
     if (ticks <= TIMER_MULT) {

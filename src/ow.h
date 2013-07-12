@@ -24,9 +24,9 @@
 #define OW_RESET_MIN	    480
 #define OW_RESET_MAX	    580
 
-#define OW_ROM_READ	    0x33
-#define OW_ROM_MATCH	    0x55	    // not yet supported
-#define OW_ROM_SKIP	    0xCC
+#define OW_ROM_READ	    0x33    //读ROM
+#define OW_ROM_MATCH	    0x55	    // not yet supported  匹配ROM
+#define OW_ROM_SKIP	    0xCC  //跳过ROM
 #define OW_VERSION	    0x03
 #define OW_PARAM_READ	    0x04
 #define OW_PARAM_WRITE	    0x05

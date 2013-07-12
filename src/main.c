@@ -36,12 +36,20 @@ digitalPin *tp;
 volatile uint32_t minCycles, idleCounter, totalCycles;
 //                最小周期                总共周期
 volatile uint8_t state, inputMode;
-//               运行状态  输入模式(控制方式 串口 iic can pwm)
+//               运行状态  输入模式(控制方式 串口 iic can pwm 1wire)
 __asm void nop(void);
 
 int main(void) 
 {
 	rccInit();     //开启CPU默认的一些时钟等
+
+	statusLed = digitalInit(GPIO_STATUS_LED_PORT, GPIO_STATUS_LED_PIN);
+	errorLed = digitalInit(GPIO_ERROR_LED_PORT, GPIO_ERROR_LED_PIN);
+#ifdef ESC_DEBUG
+	tp = digitalInit(GPIO_TP_PORT, GPIO_TP_PIN);
+	digitalLo(tp);
+#endif
+
 	timerInit();   //timer2内部计数器
 	configInit();  //加载默认的配置
 
@@ -50,7 +58,7 @@ int main(void)
 	serialInit();  //串口初始化
 	runInit();
 	cliInit();     //向串口发送一些版本信息,串口数据处理也在这里面实现
-	owInit();
+	owInit();      //初始化1wire协议
 
 	runDisarm(REASON_STARTUP);
 	inputMode = ESC_INPUT_PWM;
@@ -67,14 +75,8 @@ int main(void)
 	pwmInit(); //PWM IN初始化
 
 	//LED初始化
-	statusLed = digitalInit(GPIO_STATUS_LED_PORT, GPIO_STATUS_LED_PIN);
 	digitalHi(statusLed);
-	errorLed = digitalInit(GPIO_ERROR_LED_PORT, GPIO_ERROR_LED_PIN);
 	digitalHi(errorLed);
-#ifdef ESC_DEBUG
-	tp = digitalInit(GPIO_TP_PORT, GPIO_TP_PIN);
-	digitalLo(tp);
-#endif
 
 	// self calibrating idle timer loop
 	{
