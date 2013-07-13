@@ -31,8 +31,8 @@ float p[CONFIG_NUM_PARAMS];
 
 const char *configParameterStrings[] = {
     "CONFIG_VERSION",
-    "STARTUP_MODE",
-    "BAUD_RATE",
+    "STARTUP_MODE",         //启动模式 (传感器模式 .....)
+    "BAUD_RATE",            //串口波特率
     "PTERM",
     "ITERM",
     "FF1TERM",
@@ -61,7 +61,7 @@ const char *configParameterStrings[] = {
     "PWM_MAX_VALUE",
     "PWM_MIN_START",
     "PWM_RPM_SCALE",
-    "FET_BRAKING",
+    "FET_BRAKING",          //允许制动模式
     "PNFAC",
     "INFAC",
     "THR1TERM",
@@ -214,7 +214,7 @@ float configGetParam(char *param) {
 
 void configLoadDefault(void) {
     p[CONFIG_VERSION] = DEFAULT_CONFIG_VERSION;
-    p[STARTUP_MODE] = DEFAULT_STARTUP_MODE;
+    p[STARTUP_MODE] = DEFAULT_STARTUP_MODE;              //启动模式(传感器模式 ....)
     p[BAUD_RATE] = DEFAULT_BAUD_RATE;                    //串口默认波特率
     p[PTERM] = DEFAULT_PTERM;
     p[ITERM] = DEFAULT_ITERM;
@@ -244,7 +244,7 @@ void configLoadDefault(void) {
     p[PWM_MAX_VALUE] = DEFAULT_PWM_MAX_VALUE;
     p[PWM_MIN_START] = DEFAULT_PWM_MIN_START;
     p[PWM_RPM_SCALE] = DEFAULT_PWM_RPM_SCALE;
-    p[FET_BRAKING] = DEFAULT_FET_BRAKING;
+    p[FET_BRAKING] = DEFAULT_FET_BRAKING;                 //=1 开启允许制动模式, =0 不允许制动
     p[PNFAC] = DEFAULT_PNFAC;
     p[INFAC] = DEFAULT_INFAC;
     p[THR1TERM] = DEFAULT_THR1TERM;

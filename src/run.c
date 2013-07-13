@@ -33,20 +33,20 @@
 #include <math.h>
 
 uint32_t runMilis;
-uint32_t oldIdleCounter;
-float idlePercent;
+static uint32_t oldIdleCounter;  //上次main函数中,死循环次数.
+float idlePercent;   //空闲时间百分比(在main循环里,什么事情也不做.main死循环运行的时间)
 float avgAmps, maxAmps;
-float avgVolts;
+float avgVolts;      //当前ADC采集转换后的电池电压
 float rpm;
 float targetRpm;
-float rpmI;
-float runRPMFactor;
-float maxCurrentSQRT;
-uint8_t disarmReason;
-uint8_t commandMode;
-uint8_t runArmCount;
+static float rpmI;
+static float runRPMFactor;
+static float maxCurrentSQRT;  //最大电流 平方根 后
+uint8_t disarmReason;//此变量没啥作用.只用于给上位机显示当前的 调试代码(或者说停止电机的原因)
+uint8_t commandMode; //串口通讯的模式, cli是ascii模式, binary是二进制通讯模式
+static uint8_t runArmCount;
 volatile uint8_t runMode;//运行模式
-float maxThrust;
+static float maxThrust;
 
 //执行看门狗喂狗
 void runFeedIWDG(void) {
@@ -59,57 +59,61 @@ void runFeedIWDG(void) {
 // 初始化并开启独立看门狗
 uint16_t runIWDGInit(int ms) 
 {
-    uint16_t prevReloadVal;
-    int reloadVal;
-
 #ifndef RUN_ENABLE_IWDG
     return 0;
-#endif
-    IWDG_ReloadCounter();//喂狗
+#else
+	uint16_t prevReloadVal;
+	int reloadVal;
 
-    DBGMCU_Config(DBGMCU_IWDG_STOP, ENABLE);//当在jtag调试的时候.停止看门狗
+	IWDG_ReloadCounter();//喂狗
 
-    // IWDG timeout equal to 10 ms (the timeout may varies due to LSI frequency dispersion)
-    // Enable write access to IWDG_PR and IWDG_RLR registers
-    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);//允许访问IWDG_PR和IWDG_RLR寄存器
+	DBGMCU_Config(DBGMCU_IWDG_STOP, ENABLE);//当在jtag调试的时候.停止看门狗
 
-    // IWDG counter clock: LSI/4
-    IWDG_SetPrescaler(IWDG_Prescaler_4);
+	// IWDG timeout equal to 10 ms (the timeout may varies due to LSI frequency dispersion)
+	// Enable write access to IWDG_PR and IWDG_RLR registers
+	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);//允许访问IWDG_PR和IWDG_RLR寄存器
 
-    // Set counter reload value to obtain 10ms IWDG TimeOut.
-    //  Counter Reload Value	= 10ms/IWDG counter clock period
-    //				= 10ms / (RUN_LSI_FREQ/4)
-    //				= 0.01s / (RUN_LSI_FREQ/4)
-    //				= RUN_LSI_FREQ/(4 * 100)
-    //				= RUN_LSI_FREQ/400
-    reloadVal = RUN_LSI_FREQ*ms/4000;
+	// IWDG counter clock: LSI/4
+	IWDG_SetPrescaler(IWDG_Prescaler_4);
 
-    if (reloadVal < 1)
+	// Set counter reload value to obtain 10ms IWDG TimeOut.
+	//  Counter Reload Value	= 10ms/IWDG counter clock period
+	//				= 10ms / (RUN_LSI_FREQ/4)
+	//				= 0.01s / (RUN_LSI_FREQ/4)
+	//				= RUN_LSI_FREQ/(4 * 100)
+	//				= RUN_LSI_FREQ/400
+	reloadVal = RUN_LSI_FREQ*ms/4000;
+
+	if (reloadVal < 1)
 		reloadVal = 1;
-    else if (reloadVal > 0xfff)
+	else if (reloadVal > 0xfff)
 		reloadVal = 0xfff;
 
-    prevReloadVal = IWDG->RLR;
+	prevReloadVal = IWDG->RLR;
 
-    IWDG_SetReload(reloadVal);
+	IWDG_SetReload(reloadVal);
 
-    // Reload IWDG counter
-    IWDG_ReloadCounter();
+	// Reload IWDG counter
+	IWDG_ReloadCounter();
 
-    // Enable IWDG (the LSI oscillator will be enabled by hardware)
-    IWDG_Enable();
+	// Enable IWDG (the LSI oscillator will be enabled by hardware)
+	IWDG_Enable();
 
-    return (prevReloadVal*4000/RUN_LSI_FREQ);
+	return (prevReloadVal*4000/RUN_LSI_FREQ);
+#endif
 }
 
+//esc32 非正常停止运行 进入初始化
 void runDisarm(int reason) {
-    fetSetDutyCycle(0);
-    timerCancelAlarm2();
-    state = ESC_STATE_DISARMED;
-    pwmIsrAllOn();
-    digitalHi(statusLed);   // turn off
-    digitalLo(errorLed);    // turn on
-    disarmReason = reason;
+	fetSetDutyCycle(0);  //fet占空比设置为0
+
+	timerCancelAlarm2();
+	state = ESC_STATE_DISARMED;
+	pwmIsrAllOn();
+
+	digitalHi(statusLed);   // turn off
+	digitalLo(errorLed);    // turn on
+	disarmReason = reason;  // 设置停机原因.给上位机查看状态使用
 }
 
 void runArm(void) {
@@ -297,7 +301,7 @@ void runRpmPIDReset(void) {
     rpmI = 0.0f;
 }
 
-int32_t runRpmPID(float rpm, float target) {
+static int32_t runRpmPID(float rpm, float target) {
 	float error;
 	float ff, rpmP;
 	float iTerm = rpmI;
@@ -342,7 +346,8 @@ int32_t runRpmPID(float rpm, float target) {
 	return output;
 }
 
-static uint8_t runRpm(void) {
+static uint8_t runRpm(void) 
+{
     if (state > ESC_STATE_STARTING) 
 	{
 		//	rpm = rpm * 0.90f + (runRPMFactor / (float)crossingPeriod) * 0.10f;
@@ -440,65 +445,73 @@ int32_t runCurrentPID(int32_t duty) {
     return duty;
 }
 
-void runThrotLim(int32_t duty) {
-    float maxVolts;
-    int32_t maxDuty;
+void runThrotLim(int32_t duty) 
+{
+	float maxVolts;
+	int32_t maxDuty;
 
-    // only if a limit is set
-    if (p[MAX_CURRENT] > 0.0f) {
-	// if current limiter is calibrated - best performance
-	if (p[CL1TERM] != 0.0f) {
-	    maxVolts = p[CL1TERM] + p[CL2TERM]*rpm + p[CL3TERM]*p[MAX_CURRENT] + p[CL4TERM]*rpm*maxCurrentSQRT + p[CL5TERM]*maxCurrentSQRT;
-	    maxDuty = maxVolts * (fetPeriod / avgVolts);
+	// only if a limit is set
+	if (p[MAX_CURRENT] > 0.0f) 
+	{
+		// if current limiter is calibrated - best performance
+		if (p[CL1TERM] != 0.0f) 
+		{
+			maxVolts = p[CL1TERM] + p[CL2TERM]*rpm + p[CL3TERM]*p[MAX_CURRENT] + p[CL4TERM]*rpm*maxCurrentSQRT + p[CL5TERM]*maxCurrentSQRT;
+			maxDuty = maxVolts * (fetPeriod / avgVolts);
 
-	    if (duty > maxDuty)
-		fetActualDutyCycle = maxDuty;
-	    else
-		fetActualDutyCycle = duty;
+			if (duty > maxDuty)
+				fetActualDutyCycle = maxDuty;
+			else
+				fetActualDutyCycle = duty;
+		}
+		// otherwise, use PID - less accurate, lower performance
+		else {
+			fetActualDutyCycle += fetPeriod * (RUN_MAX_DUTY_INCREASE * 0.01f);
+			if (fetActualDutyCycle > duty)
+				fetActualDutyCycle = duty;
+			fetActualDutyCycle = runCurrentPID(fetActualDutyCycle);
+		}
 	}
-	// otherwise, use PID - less accurate, lower performance
 	else {
-	    fetActualDutyCycle += fetPeriod * (RUN_MAX_DUTY_INCREASE * 0.01f);
-	    if (fetActualDutyCycle > duty)
 		fetActualDutyCycle = duty;
-	    fetActualDutyCycle = runCurrentPID(fetActualDutyCycle);
 	}
-    }
-    else {
-		fetActualDutyCycle = duty;
-    }
 
-    _fetSetDutyCycle(fetActualDutyCycle);
+	_fetSetDutyCycle(fetActualDutyCycle);
 }
 //系统tickcount中断
 void SysTick_Handler(void) {
     // reload the hardware watchdog
     runFeedIWDG();
 
+
     avgVolts = adcAvgVolts * ADC_TO_VOLTS;
     avgAmps = (adcAvgAmps - adcAmpsOffset) * adcToAmps;
     maxAmps = (adcMaxAmps - adcAmpsOffset) * adcToAmps;
 
+
     if (runMode == SERVO_MODE) {
-		fetUpdateServo();
+		fetUpdateServo();//传感器模式
     }
     else 
 	{
 		runWatchDog();
-
 		runRpm();
-
 		runThrotLim(fetDutyCycle);
     }
 
+
+	//计算空闲时间百分比 通过串口发送给上位机  没什么用途
     idlePercent = 100.0f * (idleCounter-oldIdleCounter) * minCycles / totalCycles;
+//  空闲时间百分比 = 100 * (本次循环次数 - 上次循环次数) * 最小周期 / 总共周期
     oldIdleCounter = idleCounter;
     totalCycles = 0;
 
+
+	//处理串口数据 和串口交互使用的
     if (commandMode == CLI_MODE)
-		cliCheck();
+		cliCheck();    //ascii模式
     else
-		binaryCheck();
+		binaryCheck(); //二进制模式
 
     runMilis++;
 }
@@ -522,6 +535,7 @@ void runSetConstants(void) {
     int32_t startupMode = (int)p[STARTUP_MODE];
     float maxCurrent = p[MAX_CURRENT];
 
+	//运行模式
     if (startupMode < 0 || startupMode >= NUM_RUN_MODES)
 		startupMode = 0;
 

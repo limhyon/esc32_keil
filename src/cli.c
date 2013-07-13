@@ -42,24 +42,24 @@ static int cliTelemetry;
 //这个数组必须按照从小到大排列.因为后面用二分法来搜索
 static const cliCommand_t cliCommandTable[] = {
     {"arm", "", cliFuncArm},
-    {"beep", "<frequency> <duration>", cliFuncBeep},
-    {"binary", "", cliFuncBinary},
-    {"bootloader", "", cliFuncBoot},
-    {"config", "[READ | WRITE | DEFAULT]", cliFuncConfig},
+    {"beep", "<frequency> <duration>", cliFuncBeep},      //让电机beep
+    {"binary", "", cliFuncBinary},                        //串口切换为 binary控制模式.
+    {"bootloader", "", cliFuncBoot},                      //重启esc32
+    {"config", "[READ | WRITE | DEFAULT]", cliFuncConfig},//参数表的 读取 写入 恢复模式操作
     {"disarm", "", cliFuncDisarm},
     {"duty", "<percent>", cliFuncDuty},
-    {"help", "", cliFuncHelp},   //显示支持的功能命令的帮助信息
+    {"help", "", cliFuncHelp},                            //显示支持的功能命令的帮助信息
     {"input", "[PWM | UART | I2C | CAN]", cliFuncInput},  //设置输入控制模式
     {"mode", "[OPEN_LOOP | RPM | THRUST | SERVO]", cliFuncMode},
     {"pos", "<degrees>", cliFuncPos},
     {"pwm", "<microseconds>", cliFuncPwm},
     {"rpm", "<target>", cliFuncRpm},
-    {"set", "LIST | [<PARAMETER> <value>]", cliFuncSet},
+    {"set", "LIST | [<PARAMETER> <value>]", cliFuncSet},//设置参数表
     {"start", "", cliFuncStart},
-    {"status", "", cliFuncStatus},//显示状态
+    {"status", "", cliFuncStatus},                      //显示状态
     {"stop", "", cliFuncStop},
     {"telemetry", "<Hz>", cliFuncTelemetry},
-    {"version", "", cliFuncVer}  //显示版本
+    {"version", "", cliFuncVer}                         //显示版本
 };
 
 #define CLI_N_CMDS (sizeof cliCommandTable / sizeof cliCommandTable[0])
@@ -122,7 +122,7 @@ static void cliFuncArm(void *cmd, char *cmdLine) {
 		serialPrint("ESC armed\r\n");
 	}
 }
-
+//让电机beep
 static void cliFuncBeep(void *cmd, char *cmdLine) {
 	uint16_t freq, dur;
 
@@ -438,7 +438,7 @@ static void cliFuncStatus(void *cmd, char *cmdLine) {
     sprintf(tempBuf, formatString, "ESC STATE", cliStates[state]);
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "PERCENT IDLE", idlePercent);
+    sprintf(tempBuf, formatFloat, "PERCENT IDLE", idlePercent);//空闲时间百分比
     serialPrint(tempBuf);
 
     sprintf(tempBuf, formatFloat, "COMM PERIOD", (float)(crossingPeriod/TIMER_MULT));
@@ -459,10 +459,10 @@ static void cliFuncStatus(void *cmd, char *cmdLine) {
     sprintf(tempBuf, formatFloat, "AMPS MAX", maxAmps);
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "BAT VOLTS", avgVolts);
+    sprintf(tempBuf, formatFloat, "BAT VOLTS", avgVolts);  //电池电压
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "MOTOR VOLTS", avgVolts*duty);
+    sprintf(tempBuf, formatFloat, "MOTOR VOLTS", avgVolts*duty); //电机电压
     serialPrint(tempBuf);
 
 #ifdef ESC_DEBUG

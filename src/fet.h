@@ -50,31 +50,36 @@
 #define CH_OFF			(FET_C_H_PIN<<16)
 
 
-#define FET_A_L_OFF FET_A_L_PORT->BSRR = AL_OFF
-#define FET_B_L_OFF FET_B_L_PORT->BSRR = BL_OFF
-#define FET_C_L_OFF FET_C_L_PORT->BSRR = CL_OFF
+//GPIO 模式  设置为输出0
+#define FET_A_L_OFF FET_A_L_PORT->BSRR = AL_OFF//GPIO AL OFF
+#define FET_B_L_OFF FET_B_L_PORT->BSRR = BL_OFF//GPIO BL OFF
+#define FET_C_L_OFF FET_C_L_PORT->BSRR = CL_OFF//GPIO CL OFF
 
-#define FET_A_H_OFF FET_A_H_PORT->BSRR = AH_OFF
-#define FET_B_H_OFF FET_B_H_PORT->BSRR = BH_OFF
-#define FET_C_H_OFF FET_C_H_PORT->BSRR = CH_OFF
+#define FET_A_H_OFF FET_A_H_PORT->BSRR = AH_OFF//GPIO AH OFF
+#define FET_B_H_OFF FET_B_H_PORT->BSRR = BH_OFF//GPIO BH OFF
+#define FET_C_H_OFF FET_C_H_PORT->BSRR = CH_OFF//GPIO CH OFF
 
-#define FET_A_L_ON FET_A_L_PORT->BSRR = AL_ON
-#define FET_B_L_ON FET_B_L_PORT->BSRR = BL_ON
-#define FET_C_L_ON FET_C_L_PORT->BSRR = CL_ON
+//GPIO 模式  设置为输出1
+#define FET_A_L_ON FET_A_L_PORT->BSRR = AL_ON//GPIO AL ON
+#define FET_B_L_ON FET_B_L_PORT->BSRR = BL_ON//GPIO BL ON
+#define FET_C_L_ON FET_C_L_PORT->BSRR = CL_ON//GPIO CL ON
 
-#define FET_A_H_ON FET_A_H_PORT->BSRR = AH_ON
-#define FET_B_H_ON FET_B_H_PORT->BSRR = BH_ON
-#define FET_C_H_ON FET_C_H_PORT->BSRR = CH_ON
+#define FET_A_H_ON FET_A_H_PORT->BSRR = AH_ON//GPIO AH ON
+#define FET_B_H_ON FET_B_H_PORT->BSRR = BH_ON//GPIO BH ON
+#define FET_C_H_ON FET_C_H_PORT->BSRR = CH_ON//GPIO CH ON
 
-// bit band address turn switch on or off PWM output
+
+// bit band address turn switch on or off PWM output 位带输入.设置pwm模式或普通io模式,控制的是GPIOx_CRL/H 寄存器
+// 这下面几个寄存器中：写1则设置为复用功能推挽输出模式(这里就是PWM模式)      写0则通用推挽输出模式（GPIO控制模式）
 // HI side
-#define AH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (27*4)))//GPIOB_6
-#define BH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (31*4)))//GPIOB_7
-#define CH_BITBAND		((uint32_t *)(0x42000000 + (0x10C04*32) + (3*4))) //GPIOB_8
+#define AH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (27*4)))//GPIOB_6 控制GPIOx_CRL 设置bit27寄存器
+#define BH_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (31*4)))//GPIOB_7 控制GPIOx_CRL 设置bit31寄存器
+#define CH_BITBAND		((uint32_t *)(0x42000000 + (0x10C04*32) + (3*4))) //GPIOB_8 控制GPIOx_CRH 设置bit3寄存器
 // LO side
 #define AL_BITBAND		((uint32_t *)(0x42000000 + (0x10800*32) + (31*4)))//GPIOA_7
 #define BL_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (3*4))) //GPIOB_0
 #define CL_BITBAND		((uint32_t *)(0x42000000 + (0x10C00*32) + (7*4))) //GPIOB_1
+
 
 #define FET_MASTER_TIMER        TIM3
 #define FET_MASTER_DBGMCU_STOP  DBGMCU_TIM3_STOP

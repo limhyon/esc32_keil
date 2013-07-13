@@ -131,7 +131,10 @@ void PWM_IRQ_HANDLER(void) {
 		owReset();//ow的初始化,在调用owEdgeDetect前一定要先调用
 	}
 	// look for good RC PWM input
-	else if (inputMode == ESC_INPUT_PWM && periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue) 
+	else if (inputMode == ESC_INPUT_PWM && 
+			periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && 
+			pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue
+			)
 	{
 		if (edge == 0) {
 			pwmValidMicros = timerMicros;

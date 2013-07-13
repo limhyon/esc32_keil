@@ -33,9 +33,9 @@ digitalPin *errorLed, *statusLed;
 digitalPin *tp;
 #endif
 
-volatile uint32_t minCycles, idleCounter, totalCycles;
-//                最小周期                总共周期
-volatile uint8_t state, inputMode;
+volatile uint32_t minCycles, idleCounter,      totalCycles;
+//                最小周期   main循环运行次数  总共周期     这几个参数用来计算空闲时间百分比(也就是没有中断,在死循环里什么事情也不做)
+volatile uint8_t state,    inputMode;
 //               运行状态  输入模式(控制方式 串口 iic can pwm 1wire)
 __asm void nop(void);
 
@@ -100,6 +100,7 @@ int main(void)
 			cycles = *DWT_CYCCNT;
 			*DWT_CYCCNT = 0;		    // reset the counter
 
+			//用来计算空闲时间百分比
 			// record shortest number of instructions for loop
 			totalCycles += cycles;
 			if (cycles < minCycles)

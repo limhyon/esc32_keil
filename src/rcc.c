@@ -44,7 +44,7 @@ static __asm void rcc_asm(void)
 	LDR     SP,[R0, #0]
 	LDR     R0,[R0, #4]
 	BX      R0
-	POP {PC}
+	;POP {PC}
 }
 
 static void rccBootLoader(void) 

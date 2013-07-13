@@ -30,9 +30,10 @@
 #ifdef ADC_FAST_SAMPLE
 	static uint32_t adcRawData[ADC_CHANNELS*4]; //adc的采样值.使用dma方式采样.采样完成后自动放入这里
 	//这个变量是32位的
-	//依次存放    0             1             2       3       4         5         6       7
-	//ADC1        SENSE_CURRENT SENSE_CURRENT SENSE_B SENSE_B SENSE_VIN SENSE_VIN SENSE_B SENSE_B  低16位
-	//ADC2        SENSE_A       SENSE_A       SENSE_C SENSE_C SENSE_A   SENSE_A   SENSE_C SENSE_C  高16位
+	//依次存放    0             1             2       3       | 4         5         6       7
+	//ADC1        SENSE_CURRENT SENSE_CURRENT SENSE_B SENSE_B | SENSE_VIN SENSE_VIN SENSE_B SENSE_B  低16位
+	//ADC2        SENSE_A       SENSE_A       SENSE_C SENSE_C | SENSE_A   SENSE_A   SENSE_C SENSE_C  高16位
+	//            这里的SENSE_A  SENSE_B  SENSE_C 没有使用    |
 #else
 	static uint32_t adcRawData[ADC_CHANNELS*2];
 #endif
@@ -43,16 +44,17 @@ static int32_t adcblankingMicros;
 int32_t adcMaxPeriod;//ADC最大的周期
 static int32_t adcMinPeriod;//ADC最小的周期
 
-static int16_t histIndex;
-int16_t histSize;
-static uint16_t histA[ADC_HIST_SIZE];
+
+static int16_t histIndex;  //数组的索引值
+int16_t histSize;          //数组的大小
+static uint16_t histA[ADC_HIST_SIZE];//adc转换后的值,保准在这个数组里
 static uint16_t histB[ADC_HIST_SIZE];
 static uint16_t histC[ADC_HIST_SIZE];
 
-uint32_t avgA, avgB, avgC;
-int32_t adcAmpsOffset;
-volatile int32_t adcAvgAmps;  //当前ADC采集转换后的电流
-volatile int32_t adcMaxAmps;  //运行中最大消耗电流
+uint32_t avgA, avgB, avgC;    //电机A B C相的电压ADC采集.平均值
+int32_t adcAmpsOffset;        //当前ADC采集转换后的 传感器电流 电流偏移
+volatile int32_t adcAvgAmps;  //当前ADC采集转换后的 传感器电流
+volatile int32_t adcMaxAmps;  //运行中最大 传感器电流
 volatile int32_t adcAvgVolts; //运行的电压
 
 static uint8_t adcStateA, adcStateB, adcStateC;
@@ -305,11 +307,15 @@ void DMA1_Channel1_IRQHandler(void)
 
 	DMA1->IFCR = DMA1_IT_GL1 | DMA1_IT_TC1 | DMA1_IT_HT1;
 
-	if (runMode == SERVO_MODE)
+	if (runMode == SERVO_MODE)//运行在传感器模式 不需要AD采样
 		return;
 
+
 	// blanking time after commutation
-	if (!fetCommutationMicros || ((currentMicros >= fetCommutationMicros) ? (currentMicros - fetCommutationMicros) : (TIMER_MASK - fetCommutationMicros + currentMicros)) > adcblankingMicros) 
+	if (!fetCommutationMicros || 
+		((currentMicros >= fetCommutationMicros) ? (currentMicros - fetCommutationMicros) : (TIMER_MASK - fetCommutationMicros + currentMicros)) > adcblankingMicros
+		// 当前的时间 >= fet换向的时间 ?  当前时间-fet换向的时间  :     (0xFFFFffff-fet换向的时间+当前时间) > adcblankingMicros
+		) 
 	{
 #ifdef ADC_FAST_SAMPLE
 		histA[histIndex] = valA = (raw[1]+raw[3]);//SENSE_A
@@ -325,6 +331,7 @@ void DMA1_Channel1_IRQHandler(void)
 		avgA += valA - histA[histIndex];
 		avgB += valB - histB[histIndex];
 		avgC += valC - histC[histIndex];
+
 
 		if ((avgA+avgB+avgC)/histSize > (ADC_MIN_COMP*3) && state != ESC_STATE_DISARMED && state != ESC_STATE_NOCOMM) 
 		{

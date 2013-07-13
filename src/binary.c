@@ -23,19 +23,20 @@
 #include "adc.h"
 #include "config.h"
 
-binaryCommandStruct_t commandBuf;
-uint32_t binaryLoop;
-uint16_t sendAck, sendNack;
-uint32_t binaryTelemRate;
-uint8_t binaryTelemetryStop;
-uint8_t binaryTelemRows;
-uint8_t binaryTelemCols;
-uint8_t outChkA, outChkB;
-uint8_t inChkA, inChkB;
-uint8_t binaryParseState;
-uint8_t binaryTelemValues[BINARY_VALUE_NUM];
+static binaryCommandStruct_t commandBuf;
+static uint32_t binaryLoop;
+static uint16_t sendAck, sendNack;
+static uint32_t binaryTelemRate;
+static uint8_t binaryTelemetryStop;
+static uint8_t binaryTelemRows;
+static uint8_t binaryTelemCols;
+static uint8_t outChkA, outChkB;
+static uint8_t inChkA, inChkB;
+static uint8_t binaryParseState;
+static uint8_t binaryTelemValues[BINARY_VALUE_NUM];
 
-uint8_t binaryGetChar(uint8_t checkSum) {
+
+static uint8_t binaryGetChar(uint8_t checkSum) {
     uint8_t c;
 
     c = serialRead();
@@ -48,13 +49,13 @@ uint8_t binaryGetChar(uint8_t checkSum) {
     return c;
 }
 
-void binarySendChar(int ch) {
+static void binarySendChar(int ch) {
     serialWrite(ch);
     outChkA += ch;
     outChkB += outChkA;
 }
 
-void binarySendFloat(float f) {
+static void binarySendFloat(float f) {
     uint8_t j;
     uint8_t *c = (uint8_t *)&f;
 
@@ -62,7 +63,7 @@ void binarySendFloat(float f) {
 		binarySendChar(*c++);
 }
 
-void binarySendShort(uint16_t i) {
+static void binarySendShort(uint16_t i) {
     uint8_t j;
     uint8_t *c = (uint8_t *)&i;
 
@@ -70,7 +71,7 @@ void binarySendShort(uint16_t i) {
 		binarySendChar(*c++);
 }
 
-void binaryProcessAck(void) 
+static void binaryProcessAck(void) 
 {
     while (sendAck || sendNack) 
 	{
@@ -96,7 +97,7 @@ void binaryProcessAck(void)
     }
 }
 
-void binaryTelemSend(void) {
+static void binaryTelemSend(void) {
     serialWrite(outChkA);
     serialWrite(outChkB);
 
@@ -122,15 +123,16 @@ void binaryTelemSend(void) {
 //    BINARY_COMMAND_STATUS,
 //    BINARY_COMMAND_VERSION
 
-void binaryAck(void) {
+static void binaryAck(void) {
     sendAck = commandBuf.seqId;
 }
 
-void binaryNack(void) {
+static void binaryNack(void) {
     sendNack = commandBuf.seqId;
 }
 
-void binaryCommandParse(void) 
+//命令的解析 并执行
+static void binaryCommandParse(void) 
 {
 	switch (commandBuf.command) 
 	{
@@ -140,7 +142,7 @@ void binaryCommandParse(void)
 
 	case BINARY_COMMAND_ARM:
 		if (state == ESC_STATE_DISARMED) {
-			inputMode = ESC_INPUT_UART;
+			inputMode = ESC_INPUT_UART; //切换为串口控制模式
 			runArm();
 			binaryAck();
 		}
@@ -256,7 +258,7 @@ void binaryCommandParse(void)
 		}
 		break;
 
-	case BINARY_COMMAND_SET:
+	case BINARY_COMMAND_SET: //设置对应参数
 		if (state <= ESC_STATE_STOPPED && configSetParamByID((int)commandBuf.params[0], commandBuf.params[1])) {
 			binaryAck();
 		}
@@ -265,7 +267,7 @@ void binaryCommandParse(void)
 		}
 		break;
 
-	case BINARY_COMMAND_CONFIG:
+	case BINARY_COMMAND_CONFIG: //参数相关的
 		switch ((int)commandBuf.params[0]) 
 		{
 		case 0:
@@ -294,11 +296,12 @@ void binaryCommandParse(void)
 		binaryProcessAck();
 }
 
-void binaryCommandRead(void) {
+//从串口中读取数据
+static void binaryCommandRead(void) {
 	static uint8_t n, i;
 	uint8_t c;
 
-	while (serialAvailable()) 
+	while (serialAvailable()) //如果串口有数据到来
 	{
 		c = binaryGetChar(binaryParseState < BINARY_STATE_CHKA);
 
@@ -342,7 +345,7 @@ void binaryCommandRead(void) {
 
 		case BINARY_STATE_CHKB:
 			if (inChkB == c)
-				binaryCommandParse();
+				binaryCommandParse();//命令解析
 
 		default:
 			binaryParseState = BINARY_STATE_SYNC1;
@@ -351,12 +354,14 @@ void binaryCommandRead(void) {
 	}
 }
 
+//SysTick_Handler函数中调用. 串口数据交互 二进制操作模式
 void binaryCheck(void) {
 	static int32_t telemRowsCount;
 
 	binaryCommandRead();
 
-	if (binaryTelemRate && !(binaryLoop % binaryTelemRate)) {
+	if (binaryTelemRate && !(binaryLoop % binaryTelemRate)) 
+	{
 		int i;
 
 		// send telemetry data

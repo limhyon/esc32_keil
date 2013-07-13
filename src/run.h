@@ -38,7 +38,7 @@ enum runModes {
     OPEN_LOOP = 0,
     CLOSED_LOOP_RPM,
     CLOSED_LOOP_THRUST,
-    SERVO_MODE,
+    SERVO_MODE,         //传感器模式
     NUM_RUN_MODES
 };
 

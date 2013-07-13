@@ -44,8 +44,18 @@
     ----------------------------------------------------------
    | C_L      |   0   |   0   |   0   |   0   |   1   |   1   |
     ----------------------------------------------------------
+*
+* Step1 AH -> BL
+* Step2 CH -> BL
+* Step3 CH -> AL
+* Step4 BH -> AL
+* Step5 BH -> CL
+* Step6 AH -> CL
 */
 
+//以下这几个数组只会在fetSetStep函数中用到
+//AH BH CH都是切换gpio,设置为PWM或io模式
+//AL BL CL都是设置gpio的输出电平
 static uint32_t AH[7] = {  0,      1,      0,      0,      0,      0,      1};
 static uint32_t AL[7] = {AL_OFF, AL_OFF, AL_OFF, AL_ON,  AL_ON,  AL_OFF, AL_OFF};
 static uint32_t BH[7] = {  0,      0,      0,      0,      1,      1,      0};
@@ -53,41 +63,43 @@ static uint32_t BL[7] = {BL_ON,  BL_ON,  BL_ON,  BL_OFF, BL_OFF, BL_OFF, BL_OFF}
 static uint32_t CH[7] = {  0,      0,      1,      1,      0,      0,      0};
 static uint32_t CL[7] = {CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_ON,  CL_ON};
 
+
 static int32_t fetSwitchFreq;
 static int32_t fetStartDuty;
 int16_t fetStartDetects;
 int16_t fetDisarmDetects;
 int32_t fetPeriod;
 int32_t fetActualDutyCycle;
-volatile int32_t fetDutyCycle;
+volatile int32_t fetDutyCycle;  //fet占空比
 volatile uint8_t fetStep;
 static volatile uint8_t fetNextStep;
 volatile uint32_t fetGoodDetects;
 volatile uint32_t fetBadDetects;
 volatile uint32_t fetTotalBadDetects;
 volatile uint32_t fetCommutationMicros;
-int8_t fetBrakingEnabled;
-int8_t fetBraking;
+int8_t fetBrakingEnabled;//=1 开启制动模式,允许制动,在参数表中设置
+int8_t fetBraking;       //=1 制动模式 
 static int16_t startSeqCnt;
 static int8_t  startSeqStp;
 static float fetServoAngle;
 static float fetServoMaxRate;
 
-int16_t fetSine[FET_SERVO_RESOLUTION];
+static int16_t fetSine[FET_SERVO_RESOLUTION];
 
 static void fetCreateSine(void) {
 	float a;
 	int i;
 
 	for (i = 0; i < FET_SERVO_RESOLUTION; i++) {
-		a = M_PI * 2.0f * i / FET_SERVO_RESOLUTION;
+		a = M_PI * 2.0f * i / FET_SERVO_RESOLUTION; //乘以2 扩大2倍???
 
 		// third order harmonic injection
 		fetSine[i] = (sinf(a) + sinf(a*3.0f)/6.0f) * (2.0f/sqrtf(3.0f)) * (float)fetPeriod / 2.0f;
 	}
 }
 
-void _fetSetServoDuty(uint16_t duty[3]) {
+//设置传感器计算出来的占空比
+static void _fetSetServoDuty(uint16_t duty[3]) {
     FET_H_TIMER->FET_A_H_CHANNEL = duty[0];
     FET_H_TIMER->FET_B_H_CHANNEL = duty[1];
     FET_H_TIMER->FET_C_H_CHANNEL = duty[2];
@@ -105,7 +117,8 @@ void fetUpdateServo(void) {
 	uint16_t pwm[3];
 	int index;
 
-	if (state == ESC_STATE_RUNNING) {
+	if (state == ESC_STATE_RUNNING) 
+	{
 		*AL_BITBAND = 1;
 		*BL_BITBAND = 1;
 		*CL_BITBAND = 1;
@@ -131,6 +144,7 @@ void fetUpdateServo(void) {
 			index += FET_SERVO_RESOLUTION;
 		index = index % FET_SERVO_RESOLUTION;
 
+		//计算出3个输出占空比
 		pwm[0] = fetPeriod/2 + fetSine[index] * p[SERVO_DUTY] / 100;
 
 		index = ((index + FET_SERVO_RESOLUTION / 3) % FET_SERVO_RESOLUTION);
@@ -141,7 +155,9 @@ void fetUpdateServo(void) {
 
 		_fetSetServoDuty(pwm);
 	}
-	else {
+	else 
+	{
+		//停止运行状态下
 		*AL_BITBAND = 0;
 		*BL_BITBAND = 0;
 		*CL_BITBAND = 0;
@@ -160,8 +176,9 @@ void fetSetAngle(float angle) {
     fetServoAngle = angle * p[MOTOR_POLES] * 0.5f;
 }
 
-#define FET_TEST_DELAY	1000
+
 #if 0
+#define FET_TEST_DELAY	1000
 uint8_t fetSelfTest(void) {
 	int32_t baseCurrent;
 	int32_t cl1, cl2, cl3;
@@ -173,7 +190,7 @@ uint8_t fetSelfTest(void) {
 
 	fetSetStep(0);
 
-	// shut everything off
+	// shut everything off 所有的GPIO输出低电平
 	FET_A_L_OFF;
 	FET_B_L_OFF;
 	FET_C_L_OFF;
@@ -186,6 +203,8 @@ uint8_t fetSelfTest(void) {
 	timerDelay(FET_TEST_DELAY);
 	baseCurrent = adcAvgAmps;
 
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 测试 ：AH BH CH  PWM输出，AL BL CL 全部都输出高电平
 	// manually set HI output duty cycle (1/16th power)
 	FET_H_TIMER->FET_A_H_CHANNEL = fetPeriod - (fetPeriod>>4);
 	FET_H_TIMER->FET_B_H_CHANNEL = fetPeriod - (fetPeriod>>4);
@@ -219,6 +238,9 @@ uint8_t fetSelfTest(void) {
 	*CH_BITBAND = 0;
 	timerDelay(FET_TEST_DELAY*10);
 
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 测试 ：AH BH CH  全部都输出高电平，AL BL CL PWM输出
 	// all lows off
 	FET_A_L_OFF;
 	FET_B_L_OFF;
@@ -263,6 +285,8 @@ uint8_t fetSelfTest(void) {
 	*CL_BITBAND = 0;
 	timerDelay(FET_TEST_DELAY*10);
 
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// shut everything off
 	FET_A_L_OFF;
 	FET_B_L_OFF;
@@ -338,12 +362,14 @@ void fetBeep(uint16_t freq, uint16_t duration) {
 	runIWDGInit(prevReloadVal);
 }
 
+//设置制动 value=1 则反向pwm
 void fetSetBraking(int8_t value) {
 	if (value) {
 		// set low side for inverted PWM
 		//	*AL_BITBAND = AH[fetStep];
 		//	*BL_BITBAND = BH[fetStep];
 		//	*CL_BITBAND = CH[fetStep];
+		//设置AL BL CL 为pwm输出模式
 		*AL_BITBAND = 1;
 		*BL_BITBAND = 1;
 		*CL_BITBAND = 1;
@@ -351,6 +377,7 @@ void fetSetBraking(int8_t value) {
 	}
 	else {
 		// switch off PWM
+		//设置AL BL CL 为gpio输出模式
 		*AL_BITBAND = 0;
 		*BL_BITBAND = 0;
 		*CL_BITBAND = 0;
@@ -358,6 +385,7 @@ void fetSetBraking(int8_t value) {
 	}
 }
 
+//设置占空比
 void _fetSetDutyCycle(int32_t dutyCycle) {
 	register int32_t tmp;
 
@@ -370,7 +398,9 @@ void _fetSetDutyCycle(int32_t dutyCycle) {
 	FET_H_TIMER->FET_B_H_CHANNEL = tmp;
 	FET_H_TIMER->FET_C_H_CHANNEL = tmp;
 
-	if (fetBrakingEnabled) {
+	if (fetBrakingEnabled) 
+	{
+		//制动模式开启
 		tmp = dutyCycle + fetPeriod / 8;
 
 		if (tmp < 0)
@@ -384,6 +414,7 @@ void _fetSetDutyCycle(int32_t dutyCycle) {
 	}
 }
 
+//设置fet占空比
 void fetSetDutyCycle(int32_t requestedDutyCycle) {
 	if (requestedDutyCycle > fetPeriod)
 		requestedDutyCycle = fetPeriod;
@@ -587,11 +618,11 @@ void fetInit(void) {
     // shut 'em down!
     fetSetStep(0);
 
-//    fetSelfTest();
-//    fetTest();
+	//fetSelfTest();
+	//fetTest();
 }
-
-void fetMissedCommutate(int period) {
+//fet 未接整流
+static void fetMissedCommutate(int period) {
     int32_t newPeriod;
 
     // commutate
@@ -599,10 +630,10 @@ void fetMissedCommutate(int period) {
 
     newPeriod = period + period/4;
     if (newPeriod > 0xffff/TIMER_MULT)
-	newPeriod = 0xffff/TIMER_MULT;
+		newPeriod = 0xffff/TIMER_MULT;
     timerSetAlarm2(newPeriod, fetMissedCommutate, period);
 }
-
+//fet 整流
 void fetCommutate(int period) 
 {
     // keep count of in order ZC detections
@@ -631,7 +662,7 @@ void fetCommutate(int period)
     }
 }
 
-// initiates motor start sequence
+// initiates motor start sequence   初始化电机启动序列
 void motorStartSeqInit(void) {
     // set globals to start position
     startSeqCnt = 0;
@@ -666,7 +697,7 @@ void fetStartCommutation(uint8_t startStep) {
 }
 
 // generates motor start sequence
-void motorStartSeq(int period) {
+static void motorStartSeq(int period) {
 	int nextPeriod;
 
 	// Static field to align rotor. Without commutation.
@@ -689,7 +720,8 @@ void motorStartSeq(int period) {
 
 		// Set next step
 		startSeqStp++;
-		if (startSeqStp > 6) startSeqStp = 1;
+		if (startSeqStp > 6) 
+			startSeqStp = 1;
 		fetSetStep(startSeqStp);
 
 		// Set PWM
@@ -723,7 +755,7 @@ void motorStartSeq(int period) {
 
 #if 0
 void fetTest(void) {
-    fetSetStep(1);
+	fetSetStep(1);
 
     //__asm volatile ("cpsid f");
 	CPSID_F();
@@ -773,7 +805,7 @@ void fetSetConstants(void) {
     float startVoltage = p[START_VOLTAGE];
     float startDetects = p[GOOD_DETECTS_START];
     float disarmDetects = p[BAD_DETECTS_DISARM];
-    float fetBraking = p[FET_BRAKING];
+    float fetBraking = p[FET_BRAKING];             //是否开启制动模式
     float servoMaxRate = p[SERVO_MAX_RATE];
 
     // bounds checking

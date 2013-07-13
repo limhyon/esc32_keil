@@ -36,11 +36,11 @@
 #define NOPS_4			{NOP; NOP; NOP; NOP;}
 
 enum escStates {
-    ESC_STATE_DISARMED = 0,  //pwm模块中.用于复位ow
-    ESC_STATE_STOPPED,
+    ESC_STATE_DISARMED = 0,  //esc32 非正常停止状态
+    ESC_STATE_STOPPED,       //esc32 停止状态
     ESC_STATE_NOCOMM,
-    ESC_STATE_STARTING,
-    ESC_STATE_RUNNING
+    ESC_STATE_STARTING,      //esc32 启动状态
+    ESC_STATE_RUNNING        //esc32 运行状态
 };
 
 enum escInputModes {
@@ -52,13 +52,13 @@ enum escInputModes {
 };
 
 enum escDisarmReasons {
-    REASON_STARTUP = 0,
+    REASON_STARTUP = 0,      //刚启动时候的状态
     REASON_BAD_DETECTS,
     REASON_CROSSING_TIMEOUT,
     REASON_PWM_TIMEOUT,
-    REASON_LOW_VOLTAGE,
-    REASON_CLI,
-    REASON_BINARY
+    REASON_LOW_VOLTAGE,      //低电压
+    REASON_CLI,              //ascii串口通讯模式
+    REASON_BINARY            //二进制串口通讯模式
 };
 
 extern digitalPin *errorLed, *statusLed, *tp;
