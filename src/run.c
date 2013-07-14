@@ -32,20 +32,22 @@
 #include "stm32f10x_dbgmcu.h"
 #include <math.h>
 
-uint32_t runMilis;
+uint32_t runMilis;   //systick中断中自加.没有什么控制用途
 static uint32_t oldIdleCounter;  //上次main函数中,死循环次数.
 float idlePercent;   //空闲时间百分比(在main循环里,什么事情也不做.main死循环运行的时间)
 float avgAmps, maxAmps;
 float avgVolts;      //当前ADC采集转换后的电池电压
-float rpm;
-float targetRpm;
+
+float rpm;           //当前转速(1分钟多少转) 测量值
+float targetRpm;     //目标转速 设定值
+
 static float rpmI;
 static float runRPMFactor;
 static float maxCurrentSQRT;  //最大电流 平方根 后
 uint8_t disarmReason;//此变量没啥作用.只用于给上位机显示当前的 调试代码(或者说停止电机的原因)
 uint8_t commandMode; //串口通讯的模式, cli是ascii模式, binary是二进制通讯模式
 static uint8_t runArmCount;
-volatile uint8_t runMode;//运行模式
+volatile uint8_t runMode;//运行模式 (开环模式, RPM模式, 推力模式, 伺服模式)
 static float maxThrust;
 
 //执行看门狗喂狗
@@ -116,6 +118,7 @@ void runDisarm(int reason) {
 	disarmReason = reason;  // 设置停机原因.给上位机查看状态使用
 }
 
+//手动运行
 void runArm(void) {
 	int i;
 
@@ -140,15 +143,16 @@ void runArm(void) {
 		timerDelay(10000);
 	}
 
-//    fetBeep(150, 800);
+//	fetBeep(150, 800);
 }
 
+//电机开始运行
 void runStart(void) {
 	// reset integral bevore new motor startup
 	runRpmPIDReset();
 
 	if ((p[START_ALIGN_TIME] == 0) && (p[START_STEPS_NUM] == 0)) {
-		state = ESC_STATE_STARTING;
+		state = ESC_STATE_STARTING;  //设置为准备启动状态
 		fetStartCommutation(0);
 	}
 	else {
@@ -156,24 +160,27 @@ void runStart(void) {
 	}
 }
 
+//电机停止运行
 void runStop(void) {
     runMode = OPEN_LOOP;
     fetSetDutyCycle(0);
 }
 
+//设置运行的占空比 duty = 0~100
 uint8_t runDuty(float duty) {
     uint8_t ret = 0;
 
     if (duty >= 0.0f || duty <= 100.0f) {
 		runMode = OPEN_LOOP;
 		fetSetBraking(0);
-		fetSetDutyCycle((uint16_t)(fetPeriod*duty*0.01f));
+		fetSetDutyCycle((uint16_t)(fetPeriod*duty*0.01f));//最大周期 * 占空比(0~100) / 100
 		ret = 1;
     }
 
     return ret;
 }
 
+//pwm.c中断中调用  或  串口命令输入调用
 void runNewInput(uint16_t setpoint) {
 	static uint16_t lastPwm;
 	static float filteredSetpoint = 0;
@@ -187,7 +194,8 @@ void runNewInput(uint16_t setpoint) {
 
 	if (state == ESC_STATE_RUNNING && setpoint != lastPwm) 
 	{
-		if (runMode == OPEN_LOOP) {
+		if (runMode == OPEN_LOOP) 
+		{
 			fetSetDutyCycle(fetPeriod * (int32_t)(setpoint-pwmLoValue) / (int32_t)(pwmHiValue - pwmLoValue));
 		}
 		else if (runMode == CLOSED_LOOP_RPM) {
@@ -217,17 +225,21 @@ void runNewInput(uint16_t setpoint) {
 			// upper limit for targetRpm is configured maximum PWM_RPM_SCALE (which is MAX_RPM)
 			targetRpm = (target > p[PWM_RPM_SCALE]) ? p[PWM_RPM_SCALE] : target;
 		}
-		else if (runMode == SERVO_MODE) {
+		else if (runMode == SERVO_MODE) 
+		{
+			//伺服模式下
 			fetSetAngleFromPwm(setpoint);
 		}
 
 		lastPwm = setpoint;
 	}
-	else if ((state == ESC_STATE_NOCOMM || state == ESC_STATE_STARTING) && setpoint <= pwmLoValue) {
+	else if ((state == ESC_STATE_NOCOMM || state == ESC_STATE_STARTING) && setpoint <= pwmLoValue) 
+	{
 		fetSetDutyCycle(0);
 		state = ESC_STATE_RUNNING;
 	}
-	else if (state == ESC_STATE_DISARMED && setpoint > pwmMinValue && setpoint <= pwmLoValue) {
+	else if (state == ESC_STATE_DISARMED && setpoint > pwmMinValue && setpoint <= pwmLoValue) 
+	{
 		runArmCount++;
 		if (runArmCount > RUN_ARM_COUNT)
 			runArm();
@@ -237,6 +249,7 @@ void runNewInput(uint16_t setpoint) {
 	}
 
 	if (state == ESC_STATE_STOPPED && setpoint >= pwmMinStart) {
+		//电机开始运行
 		runStart();
 	}
 }
@@ -244,37 +257,43 @@ void runNewInput(uint16_t setpoint) {
 extern __asm void CPSID_I(void);
 extern __asm void CPSIE_I(void);
 
+//电调运行看门狗. 主要是判断电调的当前一些状态.做出停机等处理
 static void runWatchDog(void) 
 {
 	register uint32_t t, d, p;
 
 	//__asm volatile ("cpsid i");
 	CPSID_I();
-	t = timerMicros;
+	t = timerMicros;      //当前的系统tick时间
 	d = detectedCrossing;
-	p = pwmValidMicros;
+	p = pwmValidMicros;   //在PWM输入模式下.把timerMicros的时间赋值给此变量
 	//__asm volatile ("cpsie i");
 	CPSIE_I();
 
 	if (state == ESC_STATE_STARTING && fetGoodDetects > fetStartDetects) 
 	{
+		//是启动状态.切换到 运行状态
 		state = ESC_STATE_RUNNING;
 		digitalHi(statusLed);   // turn off
 	}
 	else if (state >= ESC_STATE_STOPPED) 
 	{
+		//运行模式
 		// running or starting
 		d = (t >= d) ? (t - d) : (TIMER_MASK - d + t);
 
 		// timeout if PWM signal disappears
-		if (inputMode == ESC_INPUT_PWM) {
+		if (inputMode == ESC_INPUT_PWM) 
+		{
+			//PWM模式 判断PWM输入是否超时
 			p = (t >= p) ? (t - p) : (TIMER_MASK - p + t);
 
 			if (p > PWM_TIMEOUT)
-				runDisarm(REASON_PWM_TIMEOUT);
+				runDisarm(REASON_PWM_TIMEOUT);//pwm输入超时
 		}
 
-		if (state >= ESC_STATE_STARTING && d > ADC_CROSSING_TIMEOUT) {
+		if (state >= ESC_STATE_STARTING && d > ADC_CROSSING_TIMEOUT) 
+		{
 			if (fetDutyCycle > 0) {
 				runDisarm(REASON_CROSSING_TIMEOUT);
 			}
@@ -283,15 +302,20 @@ static void runWatchDog(void)
 				pwmIsrRunOn();
 			}
 		}
-		else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects) {
+		else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects) 
+		{
 			if (fetDutyCycle > 0)
 				runDisarm(REASON_BAD_DETECTS);
 		}
-		else if (state == ESC_STATE_STOPPED) {
+		else if (state == ESC_STATE_STOPPED) 
+		{
+			//停止模式
 			adcAmpsOffset = adcAvgAmps;	// record current amperage offset
 		}
 	}
-	else if (state == ESC_STATE_DISARMED && !(runMilis % 100)) {
+	else if (state == ESC_STATE_DISARMED && !(runMilis % 100)) 
+	{
+		//停止模式下
 		adcAmpsOffset = adcAvgAmps;	// record current amperage offset
 		digitalTogg(errorLed);
 	}
@@ -301,6 +325,9 @@ void runRpmPIDReset(void) {
     rpmI = 0.0f;
 }
 
+//这个应该是计算PID
+//rpm:测量的转速值
+//target:目标的转速值
 static int32_t runRpmPID(float rpm, float target) {
 	float error;
 	float ff, rpmP;
@@ -310,14 +337,14 @@ static int32_t runRpmPID(float rpm, float target) {
 	// feed forward
 	ff = ((target*target* p[FF1TERM] + target*p[FF2TERM]) / avgVolts) * fetPeriod;
 
-	error = (target - rpm);
+	error = (target - rpm);//计算出偏差
 
 	if (error > 1000.0f)
 		error = 1000.0f;
 
 	if (error > 0.0f) {
-		rpmP = error * p[PTERM];
-		rpmI += error * p[ITERM];
+		rpmP = error * p[PTERM];  //P
+		rpmI += error * p[ITERM]; //I
 	}
 	else {
 		rpmP =  error * p[PTERM] * p[PNFAC];
@@ -326,6 +353,7 @@ static int32_t runRpmPID(float rpm, float target) {
 
 	if (fetBrakingEnabled) 
 	{
+		//开启了制动模式
 		if (rpm < 300.0f) {
 			fetSetBraking(0);
 		}
@@ -346,10 +374,12 @@ static int32_t runRpmPID(float rpm, float target) {
 	return output;
 }
 
+//计算出电机转速,根据当前转速计算出PID输出值,设置占空比
 static uint8_t runRpm(void) 
 {
     if (state > ESC_STATE_STARTING) 
 	{
+		//电机处于运行状态 计算出当前转速rpm
 		//	rpm = rpm * 0.90f + (runRPMFactor / (float)crossingPeriod) * 0.10f;
 		//	rpm -= (rpm - (runRPMFactor / (float)crossingPeriod)) * 0.25f;
 		//	rpm = (rpm + (runRPMFactor / (float)crossingPeriod)) * 0.5f;
@@ -357,12 +387,14 @@ static uint8_t runRpm(void)
 		rpm = p[RPM_MEAS_LP] * rpm + ((32768.0f * runRPMFactor) / (float)adcCrossingPeriod) * (1.0f - p[RPM_MEAS_LP]); // increased resolution, variable filter here
 
 		// run closed loop control
-		if (runMode == CLOSED_LOOP_RPM) {
+		if (runMode == CLOSED_LOOP_RPM) 
+		{
 			fetSetDutyCycle(runRpmPID(rpm, targetRpm));
 			return 1;
 		}
 		// run closed loop control also for THRUST mode
-		else if (runMode == CLOSED_LOOP_THRUST) {
+		else if (runMode == CLOSED_LOOP_THRUST) 
+		{
 			fetSetDutyCycle(runRpmPID(rpm, targetRpm));
 			return 1;
 		}
@@ -444,8 +476,8 @@ int32_t runCurrentPID(int32_t duty) {
 
     return duty;
 }
-
-void runThrotLim(int32_t duty) 
+//计算得到实际的占空比fetActualDutyCycle
+static void runThrotLim(int32_t duty) 
 {
 	float maxVolts;
 	int32_t maxDuty;
@@ -465,7 +497,8 @@ void runThrotLim(int32_t duty)
 				fetActualDutyCycle = duty;
 		}
 		// otherwise, use PID - less accurate, lower performance
-		else {
+		else 
+		{
 			fetActualDutyCycle += fetPeriod * (RUN_MAX_DUTY_INCREASE * 0.01f);
 			if (fetActualDutyCycle > duty)
 				fetActualDutyCycle = duty;
@@ -484,19 +517,21 @@ void SysTick_Handler(void) {
     runFeedIWDG();
 
 
-    avgVolts = adcAvgVolts * ADC_TO_VOLTS;
+    avgVolts = adcAvgVolts * ADC_TO_VOLTS;                     //转换后的电池电压 = ADC采集电压原始值 * 电压算法
     avgAmps = (adcAvgAmps - adcAmpsOffset) * adcToAmps;
     maxAmps = (adcMaxAmps - adcAmpsOffset) * adcToAmps;
 
 
-    if (runMode == SERVO_MODE) {
-		fetUpdateServo();//传感器模式
+    if (runMode == SERVO_MODE) 
+	{
+		//伺服模式
+		fetUpdateServo();
     }
     else 
 	{
-		runWatchDog();
-		runRpm();
-		runThrotLim(fetDutyCycle);
+		runWatchDog();//检测电调的状态.做出相应的停机处理
+		runRpm();     //计算RPM,计算PID,设置运行占空比
+		runThrotLim(fetDutyCycle);//计算得到实际占空比
     }
 
 

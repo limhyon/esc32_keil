@@ -31,7 +31,7 @@ float p[CONFIG_NUM_PARAMS];
 
 const char *configParameterStrings[] = {
     "CONFIG_VERSION",
-    "STARTUP_MODE",         //启动模式 (传感器模式 .....)
+    "STARTUP_MODE",         //启动模式 (伺服模式 .....)
     "BAUD_RATE",            //串口波特率
     "PTERM",
     "ITERM",
@@ -74,8 +74,8 @@ const char *configParameterStrings[] = {
     "PWM_LOWPASS",
     "RPM_MEAS_LP",
     "SERVO_DUTY",
-    "SERVO_P",
-    "SERVO_D",
+    "SERVO_P",             //伺服模式下 PID计算 P参数
+    "SERVO_D",             //伺服模式下 PID计算 D参数
     "SERVO_MAX_RATE",
     "SERVO_SCALE"
 };
@@ -213,10 +213,11 @@ float configGetParam(char *param) {
 #endif
 
 void configLoadDefault(void) {
-    p[CONFIG_VERSION] = DEFAULT_CONFIG_VERSION;
-    p[STARTUP_MODE] = DEFAULT_STARTUP_MODE;              //启动模式(传感器模式 ....)
+    p[CONFIG_VERSION] = DEFAULT_CONFIG_VERSION;          //本配置表的版本
+    p[STARTUP_MODE] = DEFAULT_STARTUP_MODE;              //启动模式(伺服模式 ....)
     p[BAUD_RATE] = DEFAULT_BAUD_RATE;                    //串口默认波特率
-    p[PTERM] = DEFAULT_PTERM;
+
+	p[PTERM] = DEFAULT_PTERM;
     p[ITERM] = DEFAULT_ITERM;
     p[FF1TERM] = DEFAULT_FF1TERM;
     p[FF2TERM] = DEFAULT_FF2TERM;
@@ -225,7 +226,8 @@ void configLoadDefault(void) {
     p[CL3TERM] = DEFAULT_CL3TERM;
     p[CL4TERM] = DEFAULT_CL4TERM;
     p[CL5TERM] = DEFAULT_CL5TERM;
-    p[SHUNT_RESISTANCE] = DEFAULT_SHUNT_RESISTANCE;
+
+	p[SHUNT_RESISTANCE] = DEFAULT_SHUNT_RESISTANCE;
     p[MIN_PERIOD] = DEFAULT_MIN_PERIOD;
     p[MAX_PERIOD] = DEFAULT_MAX_PERIOD;
     p[BLANKING_MICROS] = DEFAULT_BLANKING_MICROS;
@@ -236,12 +238,14 @@ void configLoadDefault(void) {
     p[MAX_CURRENT] = DEFAULT_MAX_CURRENT;
     p[SWITCH_FREQ] = DEFAULT_SWITCH_FREQ;
     p[MOTOR_POLES] = DEFAULT_MOTOR_POLES;
-    p[PWM_MIN_PERIOD] = DEFAULT_PWM_MIN_PERIOD;
-    p[PWM_MAX_PERIOD] = DEFAULT_PWM_MAX_PERIOD;
-    p[PWM_MIN_VALUE] = DEFAULT_PWM_MIN_VALUE;
+
+	p[PWM_MIN_PERIOD] = DEFAULT_PWM_MIN_PERIOD;           //PWM timer1 ch1 输入模式,最小的周期
+    p[PWM_MAX_PERIOD] = DEFAULT_PWM_MAX_PERIOD;           //PWM timer1 ch1 输入模式,最大的周期
+    p[PWM_MIN_VALUE] = DEFAULT_PWM_MIN_VALUE;             //PWM timer1 ch2 输入模式,最小的周期
     p[PWM_LO_VALUE] = DEFAULT_PWM_LO_VALUE;
     p[PWM_HI_VALUE] = DEFAULT_PWM_HI_VALUE;
-    p[PWM_MAX_VALUE] = DEFAULT_PWM_MAX_VALUE;
+    p[PWM_MAX_VALUE] = DEFAULT_PWM_MAX_VALUE;             //PWM timer1 ch2 输入模式,最大的周期\
+
     p[PWM_MIN_START] = DEFAULT_PWM_MIN_START;
     p[PWM_RPM_SCALE] = DEFAULT_PWM_RPM_SCALE;
     p[FET_BRAKING] = DEFAULT_FET_BRAKING;                 //=1 开启允许制动模式, =0 不允许制动
@@ -249,16 +253,19 @@ void configLoadDefault(void) {
     p[INFAC] = DEFAULT_INFAC;
     p[THR1TERM] = DEFAULT_THR1TERM;
     p[THR2TERM] = DEFAULT_THR2TERM;
-    p[START_ALIGN_TIME] = DEFAULT_START_ALIGN_TIME;
+
+	p[START_ALIGN_TIME] = DEFAULT_START_ALIGN_TIME;
     p[START_ALIGN_VOLTAGE] = DEFAULT_START_ALIGN_VOLTAGE;
     p[START_STEPS_NUM] = DEFAULT_START_STEPS_NUM;
     p[START_STEPS_PERIOD] = DEFAULT_START_STEPS_PERIOD;
     p[START_STEPS_ACCEL] = DEFAULT_START_STEPS_ACCEL;
-    p[PWM_LOWPASS] = DEFAULT_PWM_LOWPASS;
+
+	p[PWM_LOWPASS] = DEFAULT_PWM_LOWPASS;
     p[RPM_MEAS_LP] = DEFAULT_RPM_MEAS_LP;
-    p[SERVO_DUTY] = DEFAULT_SERVO_DUTY;
-    p[SERVO_P] = DEFAULT_SERVO_P;
-    p[SERVO_D] = DEFAULT_SERVO_D;
+
+	p[SERVO_DUTY] = DEFAULT_SERVO_DUTY;
+    p[SERVO_P] = DEFAULT_SERVO_P;                         //伺服模式下 PID计算 P参数
+    p[SERVO_D] = DEFAULT_SERVO_D;                         //伺服模式下 PID计算 D参数
     p[SERVO_MAX_RATE] = DEFAULT_SERVO_MAX_RATE;
     p[SERVO_SCALE] = DEFAULT_SERVO_SCALE;
 

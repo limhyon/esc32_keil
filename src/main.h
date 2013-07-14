@@ -53,9 +53,9 @@ enum escInputModes {
 
 enum escDisarmReasons {
     REASON_STARTUP = 0,      //刚启动时候的状态
-    REASON_BAD_DETECTS,
-    REASON_CROSSING_TIMEOUT,
-    REASON_PWM_TIMEOUT,
+    REASON_BAD_DETECTS,      //错误的检测
+    REASON_CROSSING_TIMEOUT, //ADC转换超时
+    REASON_PWM_TIMEOUT,      //pwm输入超时
     REASON_LOW_VOLTAGE,      //低电压
     REASON_CLI,              //ascii串口通讯模式
     REASON_BINARY            //二进制串口通讯模式

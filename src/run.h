@@ -35,11 +35,11 @@ enum runCommandModes {
 };
 
 enum runModes {
-    OPEN_LOOP = 0,
-    CLOSED_LOOP_RPM,
-    CLOSED_LOOP_THRUST,
-    SERVO_MODE,         //传感器模式
-    NUM_RUN_MODES
+    OPEN_LOOP = 0,      //开环模式
+    CLOSED_LOOP_RPM,    //闭环转速模式
+    CLOSED_LOOP_THRUST, //闭环推力模式
+    SERVO_MODE,         //伺服模式
+    NUM_RUN_MODES       //没用.放在最后.判断边界用
 };
 
 extern uint32_t runMilis;

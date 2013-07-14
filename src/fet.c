@@ -66,22 +66,27 @@ static uint32_t CL[7] = {CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_ON,  CL_ON};
 
 static int32_t fetSwitchFreq;
 static int32_t fetStartDuty;
+
 int16_t fetStartDetects;
 int16_t fetDisarmDetects;
-int32_t fetPeriod;
-int32_t fetActualDutyCycle;
-volatile int32_t fetDutyCycle;  //fet占空比
-volatile uint8_t fetStep;
-static volatile uint8_t fetNextStep;
-volatile uint32_t fetGoodDetects;
-volatile uint32_t fetBadDetects;
-volatile uint32_t fetTotalBadDetects;
+
+int32_t fetPeriod;              //fet最大的周期
+int32_t fetActualDutyCycle;     //fet实际的占空周期
+volatile int32_t fetDutyCycle;  //fet设置的占空比
+
+volatile uint8_t fetStep;       //在adc中断函数中,会计算出下一个要运行的电机Step
+static volatile uint8_t fetNextStep;//电机运行的下一个Step, 函数fetSetStep中,会自己指定到下一个Step
+
+volatile uint32_t fetGoodDetects;    //fet 正确的检测次数
+volatile uint32_t fetBadDetects;     //fet 总共错误的检测次数
+volatile uint32_t fetTotalBadDetects;//fet 总共错误的检测次数
+
 volatile uint32_t fetCommutationMicros;
 int8_t fetBrakingEnabled;//=1 开启制动模式,允许制动,在参数表中设置
 int8_t fetBraking;       //=1 制动模式 
 static int16_t startSeqCnt;
 static int8_t  startSeqStp;
-static float fetServoAngle;
+static float fetServoAngle; //电机要运行的目标角度(仅在伺服模式下有效) PID中的设定值
 static float fetServoMaxRate;
 
 static int16_t fetSine[FET_SERVO_RESOLUTION];
@@ -91,14 +96,16 @@ static void fetCreateSine(void) {
 	int i;
 
 	for (i = 0; i < FET_SERVO_RESOLUTION; i++) {
-		a = M_PI * 2.0f * i / FET_SERVO_RESOLUTION; //乘以2 扩大2倍???
+		a = M_PI * 2.0f * i / FET_SERVO_RESOLUTION; //乘以2 扩大2倍的方式来计算???
 
 		// third order harmonic injection
 		fetSine[i] = (sinf(a) + sinf(a*3.0f)/6.0f) * (2.0f/sqrtf(3.0f)) * (float)fetPeriod / 2.0f;
 	}
 }
 
-//设置传感器计算出来的占空比
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//设置伺服模式下 计算出来的占空比
 static void _fetSetServoDuty(uint16_t duty[3]) {
     FET_H_TIMER->FET_A_H_CHANNEL = duty[0];
     FET_H_TIMER->FET_B_H_CHANNEL = duty[1];
@@ -109,9 +116,10 @@ static void _fetSetServoDuty(uint16_t duty[3]) {
     FET_MASTER_TIMER->FET_C_L_CHANNEL = duty[2] + FET_DEADTIME;
 }
 
+//fet伺服模式下,pid计算
 void fetUpdateServo(void) {
-	static float myAngle = 0.0f;
-	static float servoDState = 0.0f;
+	static float myAngle = 0.0f;       //上次的采样值
+	static float servoDState = 0.0f;   //微分计算
 	float a, e;
 
 	uint16_t pwm[3];
@@ -119,6 +127,7 @@ void fetUpdateServo(void) {
 
 	if (state == ESC_STATE_RUNNING) 
 	{
+		//全部设置为PWM模式
 		*AL_BITBAND = 1;
 		*BL_BITBAND = 1;
 		*CL_BITBAND = 1;
@@ -127,8 +136,10 @@ void fetUpdateServo(void) {
 		*BH_BITBAND = 1;
 		*CH_BITBAND = 1;
 
+
+		//伺服模式下 PID计算 P计算
 		e = (fetServoAngle - myAngle);
-		a = e * p[SERVO_P];
+		a = e * p[SERVO_P];               //比例计算
 		if (a > fetServoMaxRate)
 			a = fetServoMaxRate;
 		else if (a < -fetServoMaxRate)
@@ -136,9 +147,11 @@ void fetUpdateServo(void) {
 
 		myAngle += a;
 
-		myAngle += (a - servoDState) * p[SERVO_D];
+		myAngle += (a - servoDState) * p[SERVO_D];   //微分计算
 		servoDState = a;
 
+
+		//求出fetSine数组的index号
 		index = ((float)FET_SERVO_RESOLUTION * myAngle / 360.0f);
 		while (index < 0)
 			index += FET_SERVO_RESOLUTION;
@@ -157,7 +170,7 @@ void fetUpdateServo(void) {
 	}
 	else 
 	{
-		//停止运行状态下
+		//停止运行状态下 全部设置为GPIO模式
 		*AL_BITBAND = 0;
 		*BL_BITBAND = 0;
 		*CL_BITBAND = 0;
@@ -168,13 +181,18 @@ void fetUpdateServo(void) {
 	}
 }
 
+//电机要运行的角度,从获取到的PWM值设置(仅在伺服模式下使用)
 void fetSetAngleFromPwm(int32_t pwm) {
     fetServoAngle = pwm * p[SERVO_SCALE] * p[MOTOR_POLES] * 0.5f / fetPeriod;
 }
 
+//在cli.c文件中,函数cliFuncPos调用,(只在伺服模式下使用),设置电机要运行到什么角度
+//angle：电机要运行到目标的角度
 void fetSetAngle(float angle) {
     fetServoAngle = angle * p[MOTOR_POLES] * 0.5f;
+//	fetServoAngle = 角度 * p / 2
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 #if 0
@@ -362,7 +380,7 @@ void fetBeep(uint16_t freq, uint16_t duration) {
 	runIWDGInit(prevReloadVal);
 }
 
-//设置制动 value=1 则反向pwm
+//value:=1 设置制动模式
 void fetSetBraking(int8_t value) {
 	if (value) {
 		// set low side for inverted PWM
@@ -385,7 +403,7 @@ void fetSetBraking(int8_t value) {
 	}
 }
 
-//设置占空比
+//设置占空比到CPU寄存器
 void _fetSetDutyCycle(int32_t dutyCycle) {
 	register int32_t tmp;
 
@@ -414,7 +432,7 @@ void _fetSetDutyCycle(int32_t dutyCycle) {
 	}
 }
 
-//设置fet占空比
+//设置fet占空比到变量
 void fetSetDutyCycle(int32_t requestedDutyCycle) {
 	if (requestedDutyCycle > fetPeriod)
 		requestedDutyCycle = fetPeriod;
@@ -621,6 +639,8 @@ void fetInit(void) {
 	//fetSelfTest();
 	//fetTest();
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //fet 未接整流
 static void fetMissedCommutate(int period) {
     int32_t newPeriod;
@@ -633,7 +653,7 @@ static void fetMissedCommutate(int period) {
 		newPeriod = 0xffff/TIMER_MULT;
     timerSetAlarm2(newPeriod, fetMissedCommutate, period);
 }
-//fet 整流
+//fet 整流 adc中断函数中调用
 void fetCommutate(int period) 
 {
     // keep count of in order ZC detections
@@ -656,11 +676,13 @@ void fetCommutate(int period)
 			timerSetAlarm2(period + period/2, fetMissedCommutate, period);
     }
     else {
+		//检测到错误
 		fetBadDetects++;
 		fetTotalBadDetects++;
 		fetGoodDetects = 0;
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // initiates motor start sequence   初始化电机启动序列
 void motorStartSeqInit(void) {
@@ -682,11 +704,14 @@ void motorStartSeqInit(void) {
 void fetStartCommutation(uint8_t startStep) {
     fetSetBraking(0);
     fetStartDuty = p[START_VOLTAGE] / avgVolts * fetPeriod;
-    adcSetCrossingPeriod(adcMaxPeriod/2);
-    detectedCrossing = timerMicros;
+
+	adcSetCrossingPeriod(adcMaxPeriod/2);
+
+	detectedCrossing = timerMicros;
     fetDutyCycle = fetStartDuty;
     _fetSetDutyCycle(fetDutyCycle);
-    adcMaxAmps = 0;
+
+	adcMaxAmps = 0;
     fetGoodDetects = 0;
     fetBadDetects = 0;
     fetTotalBadDetects = 0;
@@ -737,6 +762,7 @@ static void motorStartSeq(int period) {
 	}
 	// Continue normal startup with commutation
 	else {
+		//电机运行了
 		// allow commutation
 		state = ESC_STATE_STARTING;
 

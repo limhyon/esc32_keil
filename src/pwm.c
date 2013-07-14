@@ -15,7 +15,12 @@
 
     Copyright © 2011, 2012  Bill Nesbitt
 */
-
+/*
+ * pwm.c文件.此文件有2个功能，2个功能分别使用，不能同时使用
+ * 1、pwm in输入模式，pwm输入中断里，调用runNewInput函数
+ * 2、one wire通讯协议，pwm输入中断里，调用owEdgeDetect函数，来输入新的数据，调用owReset函数来复位1wire通讯
+ * 
+ */
 #include "pwm.h"
 #include "timer.h"
 #include "run.h"
@@ -25,12 +30,15 @@
 #include "stm32f10x_tim.h"
 #include "misc.h"
 
-static int16_t pwmMinPeriod;
-static int16_t pwmMaxPeriod;
-int16_t pwmMinValue;
+static int16_t pwmMinPeriod;  //timer1 ch1 pwm 输入最小周期
+static int16_t pwmMaxPeriod;  //timer1 ch1 pwm 输入最大周期
+
+int16_t pwmMinValue;          //timer1 ch2 pwm 输入最小周期
+static int16_t pwmMaxValue;   //timer1 ch2 pwm 输入最大周期
+
 int16_t pwmLoValue;
 int16_t pwmHiValue;
-static int16_t pwmMaxValue;
+
 int16_t pwmMinStart;
 volatile uint32_t pwmValidMicros;
 
@@ -119,8 +127,8 @@ void PWM_IRQ_HANDLER(void) {
 
 	edge = !(PWM_TIM->SR & TIM_IT_CC2);
 
-	periodValue = PWM_TIM->CCR1;
-	pwmValue = PWM_TIM->CCR2;
+	periodValue = PWM_TIM->CCR1; //IO 输入PA8
+	pwmValue = PWM_TIM->CCR2;    //IO 输入(但是没有看到配置了使用哪个IO做为输入了)
 
 	// is this an OW reset pulse?
 	if (state == ESC_STATE_DISARMED && 
@@ -131,7 +139,7 @@ void PWM_IRQ_HANDLER(void) {
 		owReset();//ow的初始化,在调用owEdgeDetect前一定要先调用
 	}
 	// look for good RC PWM input
-	else if (inputMode == ESC_INPUT_PWM && 
+	else if (inputMode == ESC_INPUT_PWM &&  //PWM输入模式
 			periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && 
 			pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue
 			)
@@ -149,21 +157,23 @@ void PWM_IRQ_HANDLER(void) {
 }
 
 void pwmSetConstants(void) {
-    float rpmScale = p[PWM_RPM_SCALE];
+	float rpmScale = p[PWM_RPM_SCALE];
 
-    pwmMinPeriod = p[PWM_MIN_PERIOD] = (int)p[PWM_MIN_PERIOD];//最小周期
-    pwmMaxPeriod = p[PWM_MAX_PERIOD] = (int)p[PWM_MAX_PERIOD];//最大周期
+	pwmMinPeriod = p[PWM_MIN_PERIOD] = (int)p[PWM_MIN_PERIOD];//PWM最小周期 timer1 ch1
+	pwmMaxPeriod = p[PWM_MAX_PERIOD] = (int)p[PWM_MAX_PERIOD];//PWM最大周期 timer1 ch1
 
-    pwmMinValue = p[PWM_MIN_VALUE] = (int)p[PWM_MIN_VALUE];
-    pwmLoValue = p[PWM_LO_VALUE] = (int)p[PWM_LO_VALUE];
-    pwmHiValue = p[PWM_HI_VALUE] = (int)p[PWM_HI_VALUE];
-    pwmMaxValue = p[PWM_MAX_VALUE] = (int)p[PWM_MAX_VALUE];
-    pwmMinStart = p[PWM_MIN_START] = (int)p[PWM_MIN_START];
+	pwmMinValue = p[PWM_MIN_VALUE] = (int)p[PWM_MIN_VALUE];   //PWM最小周期 timer1 ch2
+	pwmMaxValue = p[PWM_MAX_VALUE] = (int)p[PWM_MAX_VALUE];   //PWM最大周期 timer1 ch2
 
-    if (rpmScale < PWM_RPM_SCALE_MIN)
+	pwmLoValue = p[PWM_LO_VALUE] = (int)p[PWM_LO_VALUE];
+	pwmHiValue = p[PWM_HI_VALUE] = (int)p[PWM_HI_VALUE];
+
+	pwmMinStart = p[PWM_MIN_START] = (int)p[PWM_MIN_START];
+
+	if (rpmScale < PWM_RPM_SCALE_MIN)
 		rpmScale = PWM_RPM_SCALE_MIN;
-    else if (rpmScale > PWM_RPM_SCALE_MAX)
+	else if (rpmScale > PWM_RPM_SCALE_MAX)
 		rpmScale = PWM_RPM_SCALE_MAX;
 
-    p[PWM_RPM_SCALE] = rpmScale;
+	p[PWM_RPM_SCALE] = rpmScale;
 }

@@ -62,7 +62,7 @@
 #else
 #define ADC_MIN_COMP		15
 #endif
-#define ADC_CROSSING_TIMEOUT	(250000*TIMER_MULT)
+#define ADC_CROSSING_TIMEOUT	(250000*TIMER_MULT)  //ADC转换超时时间
 
 //#define ADC_COMMUTATION_ADVANCE	(0)				    // 0 deg
 //#define ADC_COMMUTATION_ADVANCE	(crossingPeriod/16)		    // 3.75 deg

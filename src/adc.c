@@ -62,7 +62,7 @@ static uint8_t adcStateA, adcStateB, adcStateC;
 volatile uint32_t detectedCrossing;
 volatile uint32_t crossingPeriod;
 volatile int32_t adcCrossingPeriod;
-static uint32_t nextCrossingDetect;
+static uint32_t nextCrossingDetect;  //ADC下一个检测时间点
 
 //重新对ADC内部校准
 static void adcCalibrateADC(ADC_TypeDef *ADCx) 
@@ -261,9 +261,9 @@ static void adcEvaluateHistSize(void)
 
 //    if (sizeNeeded > (histSize+1) && histSize < ADC_HIST_SIZE)
     if (sizeNeeded > (histSize+1) && histSize < ADC_HIST_SIZE)
-		adcGrowHist();
+		adcGrowHist();  //增加
     else if (sizeNeeded < (histSize-1) && sizeNeeded > 1)
-		adcShrinkHist();
+		adcShrinkHist();//减小
 }
 
 extern __asm void CPSID_I(void);
@@ -307,7 +307,7 @@ void DMA1_Channel1_IRQHandler(void)
 
 	DMA1->IFCR = DMA1_IT_GL1 | DMA1_IT_TC1 | DMA1_IT_HT1;
 
-	if (runMode == SERVO_MODE)//运行在传感器模式 不需要AD采样
+	if (runMode == SERVO_MODE)//运行在伺服模式 不需要AD采样
 		return;
 
 
@@ -337,9 +337,9 @@ void DMA1_Channel1_IRQHandler(void)
 		{
 			register int32_t periodMicros;
 
-			periodMicros = (currentMicros >= detectedCrossing) ? (currentMicros - detectedCrossing) : (TIMER_MASK - detectedCrossing + currentMicros);
+			periodMicros = (currentMicros >= detectedCrossing) ? (currentMicros - detectedCrossing) : (TIMER_MASK - detectedCrossing + currentMicros);//得到两次ad的间隔时间
 
-			if (periodMicros > nextCrossingDetect) 
+			if (periodMicros > nextCrossingDetect) //超过了时间点,开始换向
 			{
 				register uint8_t nextStep = 0;
 
@@ -378,7 +378,7 @@ void DMA1_Channel1_IRQHandler(void)
 					nextStep = 5;
 				}
 
-				if (nextStep && periodMicros > adcMinPeriod) 
+				if (nextStep && periodMicros > adcMinPeriod) //超过了最小检测周期
 				{
 					if (periodMicros > adcMaxPeriod)
 						periodMicros = adcMaxPeriod;
@@ -393,7 +393,7 @@ void DMA1_Channel1_IRQHandler(void)
 					//		    crossingPeriod = (crossingPeriod*15 + periodMicros)/16;
 
 					// schedule next commutation
-					fetStep = nextStep;
+					fetStep = nextStep;   //切换到下一个换向
 					fetCommutationMicros = 0;
 					timerSetAlarm1(crossingPeriod/2 - (ADC_DETECTION_TIME*(histSize+2))/2 - ADC_COMMUTATION_ADVANCE, fetCommutate, crossingPeriod);
 

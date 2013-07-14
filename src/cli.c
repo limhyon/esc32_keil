@@ -32,33 +32,39 @@
 #include <string.h>
 #include <math.h>
 
-char version[16];
+char version[16];       //当前软件版本
 static char cliBuf[32]; //串口接收到的数据保存在此数组里面,根据cliBufIndex来索引
 static int cliBufIndex; //当前串口缓存的数组index
-static char tempBuf[64];
-static int cliTelemetry;
+static char tempBuf[64];//临时寄存器
+static int cliTelemetry;//自动打印数据模式,在systick中断中会调用cliCheck函数.然后可以自动打印当前的信息(串口方式)
 
 // this table must be sorted by command name
 //这个数组必须按照从小到大排列.因为后面用二分法来搜索
 static const cliCommand_t cliCommandTable[] = {
-    {"arm", "", cliFuncArm},
+    {"arm", "", cliFuncArm},                              //切换为手动运行
     {"beep", "<frequency> <duration>", cliFuncBeep},      //让电机beep
     {"binary", "", cliFuncBinary},                        //串口切换为 binary控制模式.
     {"bootloader", "", cliFuncBoot},                      //重启esc32
-    {"config", "[READ | WRITE | DEFAULT]", cliFuncConfig},//参数表的 读取 写入 恢复模式操作
-    {"disarm", "", cliFuncDisarm},
-    {"duty", "<percent>", cliFuncDuty},
-    {"help", "", cliFuncHelp},                            //显示支持的功能命令的帮助信息
+
+	{"config", "[READ | WRITE | DEFAULT]", cliFuncConfig},//参数表的 读取 写入 恢复模式操作
+
+	{"disarm", "", cliFuncDisarm},                        //停止手动运行模式
+    {"duty", "<percent>", cliFuncDuty},                   //设置占空比
+
+	{"help", "", cliFuncHelp},                            //显示支持的功能命令的帮助信息
     {"input", "[PWM | UART | I2C | CAN]", cliFuncInput},  //设置输入控制模式
-    {"mode", "[OPEN_LOOP | RPM | THRUST | SERVO]", cliFuncMode},
-    {"pos", "<degrees>", cliFuncPos},
-    {"pwm", "<microseconds>", cliFuncPwm},
-    {"rpm", "<target>", cliFuncRpm},
-    {"set", "LIST | [<PARAMETER> <value>]", cliFuncSet},//设置参数表
-    {"start", "", cliFuncStart},
+    {"mode", "[OPEN_LOOP | RPM | THRUST | SERVO]", cliFuncMode}, //设置运行模式
+    
+	{"pos", "<degrees>", cliFuncPos},                   //设置电机要转到什么角度(只在伺服控制模式下使用),传递进来的参数是电机的目标角度
+    {"pwm", "<microseconds>", cliFuncPwm},              //设置电机的PWM
+	{"rpm", "<target>", cliFuncRpm},                    //设置目标速度
+
+	{"set", "LIST | [<PARAMETER> <value>]", cliFuncSet},//设置参数表
+    {"start", "", cliFuncStart},                        //电机开始运行
     {"status", "", cliFuncStatus},                      //显示状态
-    {"stop", "", cliFuncStop},
-    {"telemetry", "<Hz>", cliFuncTelemetry},
+    {"stop", "", cliFuncStop},                          //电机停止运行
+
+	{"telemetry", "<Hz>", cliFuncTelemetry},            //自动显示电调状态(和控制无关)
     {"version", "", cliFuncVer}                         //显示版本
 };
 
@@ -110,7 +116,7 @@ static void cliFuncChangeInput(uint8_t input) {
 		serialPrint(tempBuf);
 	}
 }
-
+//电机手动运行
 static void cliFuncArm(void *cmd, char *cmdLine) {
 	if (state > ESC_STATE_DISARMED) {
 		serialPrint("ESC already armed\r\n");
@@ -216,11 +222,13 @@ static void cliFuncDuty(void *cmd, char *cmdLine) {
 		if (sscanf(cmdLine, "%f", &duty) != 1) {
 			cliUsage((cliCommand_t *)cmd);
 		}
-		else if (!runDuty(duty)) {
+		else if (!runDuty(duty)) 
+		{
+			//duty 不在0~100范围内
 			serialPrint("duty out of range: 0 => 100\r\n");
 		}
 		else {
-			sprintf(tempBuf, "Fet duty set to %.2f%%\r\n", (float)fetDutyCycle/fetPeriod*100.0f);
+			sprintf(tempBuf, "Fet duty set to %.2f%%\r\n", (float)fetDutyCycle/fetPeriod*100.0f);//占空比(0~100) / 最大周期 * 100
 			serialPrint(tempBuf);
 		}
 	}
@@ -330,33 +338,35 @@ static void cliFuncPwm(void *cmd, char *cmdLine) {
 		}
 	}
 }
-
+//设置目标转速
 static void cliFuncRpm(void *cmd, char *cmdLine) {
-    float target;
+	float target;
 
-    if (state < ESC_STATE_RUNNING) {
+	if (state < ESC_STATE_RUNNING) {
 		serialPrint(runError);
-    }
-    else {
-	if (sscanf(cmdLine, "%f", &target) != 1) {
-	    cliUsage((cliCommand_t *)cmd);
 	}
-	else if (p[FF1TERM] == 0.0f) {
-	    serialPrint("Calibration parameters required\r\n");
-	}
-	else if (target < 100.0f || target > 10000.0f) {
-	    serialPrint("RPM out of range: 100 => 10000\r\n");
-	}
-	else {
-		if (runMode != CLOSED_LOOP_RPM) {
-			runRpmPIDReset();
-			runMode = CLOSED_LOOP_RPM;
+	else 
+	{
+		if (sscanf(cmdLine, "%f", &target) != 1) {
+			cliUsage((cliCommand_t *)cmd);
 		}
-	    targetRpm = target;
-	    sprintf(tempBuf, "RPM set to %6.0f\r\n", target);
-	    serialPrint(tempBuf);
+		else if (p[FF1TERM] == 0.0f) {
+			serialPrint("Calibration parameters required\r\n");
+		}
+		else if (target < 100.0f || target > 10000.0f) {
+			serialPrint("RPM out of range: 100 => 10000\r\n");
+		}
+		else 
+		{
+			if (runMode != CLOSED_LOOP_RPM) {
+				runRpmPIDReset();
+				runMode = CLOSED_LOOP_RPM;
+			}
+			targetRpm = target;
+			sprintf(tempBuf, "RPM set to %6.0f\r\n", target);
+			serialPrint(tempBuf);
+		}
 	}
-    }
 }
 
 void cliPrintParam(int i) {
@@ -407,7 +417,7 @@ static void cliFuncSet(void *cmd, char *cmdLine) {
 		}
 	}
 }
-
+//电机启动
 static void cliFuncStart(void *cmd, char *cmdLine) {
 	if (state == ESC_STATE_DISARMED) {
 		serialPrint("ESC disarmed, arm first\r\n");
@@ -427,27 +437,27 @@ static void cliFuncStatus(void *cmd, char *cmdLine) {
     const char *formatString = "%-12s%10s\r\n";
     float duty;
 
-    duty = (float)fetActualDutyCycle/fetPeriod;
+    duty = (float)fetActualDutyCycle/fetPeriod;//  实际占空比 / 周期
 
-    sprintf(tempBuf, formatString, "INPUT MODE", cliInputModes[inputMode]);
+    sprintf(tempBuf, formatString, "INPUT MODE", cliInputModes[inputMode]);//控制输入模式
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatString, "RUN MODE", cliRunModes[runMode]);
+    sprintf(tempBuf, formatString, "RUN MODE", cliRunModes[runMode]);      //运行模式
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatString, "ESC STATE", cliStates[state]);
+    sprintf(tempBuf, formatString, "ESC STATE", cliStates[state]);         //esc32当前状态
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "PERCENT IDLE", idlePercent);//空闲时间百分比
+    sprintf(tempBuf, formatFloat, "PERCENT IDLE", idlePercent);            //空闲时间百分比
     serialPrint(tempBuf);
 
     sprintf(tempBuf, formatFloat, "COMM PERIOD", (float)(crossingPeriod/TIMER_MULT));
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatInt, "BAD DETECTS", fetTotalBadDetects);
+    sprintf(tempBuf, formatInt, "BAD DETECTS", fetTotalBadDetects);        //fet检测到错误的次数
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "FET DUTY", duty*100.0f);
+    sprintf(tempBuf, formatFloat, "FET DUTY", duty*100.0f);                //fet实际占空比
     serialPrint(tempBuf);
 
     sprintf(tempBuf, formatFloat, "RPM", rpm);
@@ -459,10 +469,10 @@ static void cliFuncStatus(void *cmd, char *cmdLine) {
     sprintf(tempBuf, formatFloat, "AMPS MAX", maxAmps);
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "BAT VOLTS", avgVolts);  //电池电压
+    sprintf(tempBuf, formatFloat, "BAT VOLTS", avgVolts);                  //电池电压
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "MOTOR VOLTS", avgVolts*duty); //电机电压
+    sprintf(tempBuf, formatFloat, "MOTOR VOLTS", avgVolts*duty);           //电机电压
     serialPrint(tempBuf);
 
 #ifdef ESC_DEBUG
@@ -531,7 +541,9 @@ static void cliPrompt(void) {
 void cliCheck(void) {
 	cliCommand_t *cmd;
 
-	if (cliTelemetry && !(runMilis % cliTelemetry)) {
+	if (cliTelemetry && !(runMilis % cliTelemetry)) 
+	{
+		//自动输出电调状态
 		serialPrint(cliHome);
 		sprintf(tempBuf, "Telemetry @ %d Hz\r\n\n", 1000/cliTelemetry);
 		serialPrint(tempBuf);

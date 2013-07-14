@@ -134,6 +134,7 @@ void timerInit(void)
 // ticks：要调用callback函数的相对时间
 // callback：要调用的函数
 // parameter：要调用函数的参数
+//被adc.c使用 adc采样
 void timerSetAlarm1(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
     if (ticks <= TIMER_MULT) 
@@ -156,7 +157,7 @@ void timerSetAlarm1(int32_t ticks, timerCallback_t *callback, int parameter) {
 		TIMER_TIM->DIER |= TIM_IT_CC1;//开中断
     }
 }
-
+//被fet.c使用 电调的主要控制逻辑部分
 void timerSetAlarm2(int32_t ticks, timerCallback_t *callback, int parameter) {
     // do it now
     if (ticks <= TIMER_MULT) {
