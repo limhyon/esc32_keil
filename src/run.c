@@ -254,21 +254,20 @@ void runNewInput(uint16_t setpoint) {
 	}
 }
 
-extern __asm void CPSID_I(void);
-extern __asm void CPSIE_I(void);
-
 //电调运行看门狗. 主要是判断电调的当前一些状态.做出停机等处理
 static void runWatchDog(void) 
 {
 	register uint32_t t, d, p;
 
 	//__asm volatile ("cpsid i");
-	CPSID_I();
+	//CPSID_I();
+	__disable_irq();
 	t = timerMicros;      //当前的系统tick时间
 	d = detectedCrossing;
 	p = pwmValidMicros;   //在PWM输入模式下.把timerMicros的时间赋值给此变量
 	//__asm volatile ("cpsie i");
-	CPSIE_I();
+	//CPSIE_I();
+	__enable_irq();
 
 	if (state == ESC_STATE_STARTING && fetGoodDetects > fetStartDetects) 
 	{

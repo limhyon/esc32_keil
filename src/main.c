@@ -150,7 +150,8 @@ void reset_wait(void) {
 	;
 }
 
-//AXian keil不支持嵌汇编.因为他不支持thumb指令集
+#if 0
+//__disable_irq()
 __asm void CPSID_I(void)
 {
 	PUSH {lr}
@@ -158,6 +159,7 @@ __asm void CPSID_I(void)
 	POP {PC}
 }
 
+//__disable_fault_irq()
 __asm void CPSID_F(void)
 {
 	PUSH {lr}
@@ -165,12 +167,14 @@ __asm void CPSID_F(void)
 	POP {PC}
 }
 
+//__enable_irq()
 __asm void CPSIE_I(void)
 {
 	PUSH {lr}
 	cpsie i 
 	POP {PC}
 }
+#endif
 
 __asm void nop(void)
 {

@@ -266,8 +266,6 @@ static void adcEvaluateHistSize(void)
 		adcShrinkHist();//减小
 }
 
-extern __asm void CPSID_I(void);
-extern __asm void CPSIE_I(void);
 //dma1 ad采样完成中断
 //#pragma GCC optimize ("-O1")
 #pragma O1
@@ -278,10 +276,12 @@ void DMA1_Channel1_IRQHandler(void)
 	uint32_t currentMicros;
 
 	//__asm volatile ("cpsid i");
-	CPSID_I();
+	//CPSID_I();
+	__disable_irq();
 	currentMicros = timerGetMicros();//获取当前时间
 	//__asm volatile ("cpsie i");
-	CPSIE_I();
+	//CPSIE_I();
+	__enable_irq();
 
 #ifdef ADC_FAST_SAMPLE
 	if ((DMA1->ISR & DMA1_FLAG_TC1) != RESET) {

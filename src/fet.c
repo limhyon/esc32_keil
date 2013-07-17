@@ -338,9 +338,6 @@ uint8_t fetSelfTest(void) {
 }
 #endif
 
-extern __asm void CPSID_I(void);
-extern __asm void CPSIE_I(void);
-extern __asm void CPSID_F(void);
 
 // this assume that one low FET is conducting (s/b B)
 void fetBeep(uint16_t freq, uint16_t duration) {
@@ -352,7 +349,8 @@ void fetBeep(uint16_t freq, uint16_t duration) {
 	prevReloadVal = runIWDGInit(999);
 
 	//__asm volatile ("cpsid i");
-	CPSID_I();
+	//CPSID_I();
+	__disable_irq();
 
 	for (i = 0; i < duration; i++) {
 		// reload the hardware watchdog
@@ -375,7 +373,8 @@ void fetBeep(uint16_t freq, uint16_t duration) {
 	}
 
 	//__asm volatile ("cpsie i");
-	CPSIE_I();
+	//CPSIE_I();
+	__enable_irq();
 
 	runIWDGInit(prevReloadVal);
 }
@@ -450,10 +449,12 @@ void fetSetDutyCycle(int32_t requestedDutyCycle) {
 // 设置FET下一步
 static void fetSetStep(int n) {
     //__asm volatile ("cpsid i");
-	CPSID_I();
+	//CPSID_I();
+	__disable_irq();
     fetCommutationMicros = timerGetMicros();
     //__asm volatile ("cpsie i");
-	CPSIE_I();
+	//CPSIE_I();
+	__enable_irq();
 
     fetNextStep = n + 1;
     if (fetNextStep > 6)
@@ -784,7 +785,8 @@ void fetTest(void) {
 	fetSetStep(1);
 
     //__asm volatile ("cpsid f");
-	CPSID_F();
+	//CPSID_F();
+	__disable_fault_irq();
 /*
     // pulse phase A HI FET
     FET_A_H_PORT->BSRR = AH_ON;
@@ -822,7 +824,8 @@ void fetTest(void) {
 		;
 
     //__asm volatile ("cpsie i");
-	CPSIE_I();
+	//CPSIE_I();
+	__enable_irq();
 }
 #endif
 
