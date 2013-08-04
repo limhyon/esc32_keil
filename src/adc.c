@@ -57,7 +57,7 @@ volatile int32_t adcAvgAmps;  //当前ADC采集转换后的 传感器电流
 volatile int32_t adcMaxAmps;  //运行中最大 传感器电流
 volatile int32_t adcAvgVolts; //运行的电压
 
-static uint8_t adcStateA, adcStateB, adcStateC;
+static uint8_t adcStateA, adcStateB, adcStateC;//当前的状态
 
 volatile uint32_t detectedCrossing;
 volatile uint32_t crossingPeriod;
@@ -343,18 +343,21 @@ void DMA1_Channel1_IRQHandler(void)
 			{
 				register uint8_t nextStep = 0;
 
-				if (!adcStateA && avgA >= (avgB+avgC)>>1) 
+				if (!adcStateA && avgA >= (avgB+avgC)>>1)
 				{
+					//当前在STEP5 切换到STEP6
 					adcStateA = 1;
-					nextStep = 6;
+					nextStep = 6;  //切换到STEP6
 				}
 				else if (adcStateA && avgA <= (avgB+avgC)>>1) 
 				{
+					//当前在STEP2 切换到STEP3
 					adcStateA = 0;
 					nextStep = 3;
 				}
 				else if (!adcStateB && avgB >= (avgA+avgC)>>1) 
 				{
+					//当前在STEP3 切换到STEP4
 					adcStateB = 1;
 					nextStep = 4;
 				}

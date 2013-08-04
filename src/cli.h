@@ -21,7 +21,7 @@
 
 #define CLI_INTR    3	    // interrupt
 #define CLI_BELL    7	    // bellz
-#define CLI_BS	    127	    // backspace
+#define CLI_BS	    8	    // backspace
 
 typedef struct {
     char *name;

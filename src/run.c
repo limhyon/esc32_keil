@@ -38,8 +38,8 @@ float idlePercent;   //空闲时间百分比(在main循环里,什么事情也不
 float avgAmps, maxAmps;
 float avgVolts;      //当前ADC采集转换后的电池电压
 
-float rpm;           //当前转速(1分钟多少转) 测量值
-float targetRpm;     //目标转速 设定值
+float rpm;           //当前转速(1分钟多少转) 测量值 在runRpm函数中计算出来.在runThrotLim中还要继续使用.
+float targetRpm;     //目标转速 设定值(只在闭环 或 闭环推力模式下使用此变量)
 
 static float rpmI;
 static float runRPMFactor;
@@ -196,16 +196,21 @@ void runNewInput(uint16_t setpoint) {
 	{
 		if (runMode == OPEN_LOOP) 
 		{
+			//开环模式
 			fetSetDutyCycle(fetPeriod * (int32_t)(setpoint-pwmLoValue) / (int32_t)(pwmHiValue - pwmLoValue));
 		}
-		else if (runMode == CLOSED_LOOP_RPM) {
+		else if (runMode == CLOSED_LOOP_RPM) 
+		{
+			//闭环转速模式
 			float target = p[PWM_RPM_SCALE] * (setpoint-pwmLoValue) / (pwmHiValue - pwmLoValue);
 
 			// limit to configured maximum
 			targetRpm = (target > p[PWM_RPM_SCALE]) ? p[PWM_RPM_SCALE] : target;
 		}
 		// THRUST Mode
-		else if (runMode == CLOSED_LOOP_THRUST) {
+		else if (runMode == CLOSED_LOOP_THRUST) 
+		{
+			//闭环推力模式
 			float targetThrust;  // desired trust
 			float target;        // target(rpm)
 
@@ -277,7 +282,8 @@ static void runWatchDog(void)
 	}
 	else if (state >= ESC_STATE_STOPPED) 
 	{
-		//运行模式
+		//运行模式状态下.会一直在这里检测状态.如果状态不对出错.会调用runDisarm函数停止
+
 		// running or starting
 		d = (t >= d) ? (t - d) : (TIMER_MASK - d + t);
 
@@ -294,17 +300,18 @@ static void runWatchDog(void)
 		if (state >= ESC_STATE_STARTING && d > ADC_CROSSING_TIMEOUT) 
 		{
 			if (fetDutyCycle > 0) {
-				runDisarm(REASON_CROSSING_TIMEOUT);
+				runDisarm(REASON_CROSSING_TIMEOUT);//错误停止
 			}
-			else {
-				runArm();
-				pwmIsrRunOn();
+			else 
+			{
+				runArm();//手动运行起来
+				pwmIsrRunOn();//PWM开启输入比较
 			}
 		}
 		else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects) 
 		{
 			if (fetDutyCycle > 0)
-				runDisarm(REASON_BAD_DETECTS);
+				runDisarm(REASON_BAD_DETECTS);//错误停止
 		}
 		else if (state == ESC_STATE_STOPPED) 
 		{
@@ -388,16 +395,19 @@ static uint8_t runRpm(void)
 		// run closed loop control
 		if (runMode == CLOSED_LOOP_RPM) 
 		{
+			//运行在闭环模式下
 			fetSetDutyCycle(runRpmPID(rpm, targetRpm));
 			return 1;
 		}
 		// run closed loop control also for THRUST mode
 		else if (runMode == CLOSED_LOOP_THRUST) 
 		{
+			//运行在闭环推力模式
 			fetSetDutyCycle(runRpmPID(rpm, targetRpm));
 			return 1;
 		}
-		else {
+		else 
+		{
 			return 0;
 		}
 	}
@@ -453,7 +463,8 @@ void runInit(void) {
 
 float currentIState;
 
-int32_t runCurrentPID(int32_t duty) {
+//根据PID计算出PWM占空比的值
+static int32_t runCurrentPID(int32_t duty) {
     float error;
     float pTerm, iTerm;
 
@@ -475,7 +486,9 @@ int32_t runCurrentPID(int32_t duty) {
 
     return duty;
 }
+
 //计算得到实际的占空比fetActualDutyCycle
+//参数duty:实际上就是fetDutyCycle传递进来的.想要运行的周期
 static void runThrotLim(int32_t duty) 
 {
 	float maxVolts;
@@ -484,7 +497,9 @@ static void runThrotLim(int32_t duty)
 	// only if a limit is set
 	if (p[MAX_CURRENT] > 0.0f) 
 	{
-		// if current limiter is calibrated - best performance
+		//如果实际的占空比和设置的占空比不一样.那么会实时改变CPU的PWM寄存器.
+
+		// if current limiter is calibrated - best performance   使用电流限制器校准.性能最好
 		if (p[CL1TERM] != 0.0f) 
 		{
 			maxVolts = p[CL1TERM] + p[CL2TERM]*rpm + p[CL3TERM]*p[MAX_CURRENT] + p[CL4TERM]*rpm*maxCurrentSQRT + p[CL5TERM]*maxCurrentSQRT;
@@ -495,21 +510,23 @@ static void runThrotLim(int32_t duty)
 			else
 				fetActualDutyCycle = duty;
 		}
-		// otherwise, use PID - less accurate, lower performance
+		// otherwise, use PID - less accurate, lower performance  使用PID来计算.不大准确.性能低
 		else 
 		{
 			fetActualDutyCycle += fetPeriod * (RUN_MAX_DUTY_INCREASE * 0.01f);
 			if (fetActualDutyCycle > duty)
 				fetActualDutyCycle = duty;
-			fetActualDutyCycle = runCurrentPID(fetActualDutyCycle);
+			fetActualDutyCycle = runCurrentPID(fetActualDutyCycle);//用PID来计算出当前要运行的占空比
 		}
 	}
 	else {
 		fetActualDutyCycle = duty;
 	}
 
+	//设置到CPU寄存器里.算出来的实际PWM占空比
 	_fetSetDutyCycle(fetActualDutyCycle);
 }
+
 //系统tickcount中断
 void SysTick_Handler(void) {
     // reload the hardware watchdog
@@ -529,8 +546,8 @@ void SysTick_Handler(void) {
     else 
 	{
 		runWatchDog();//检测电调的状态.做出相应的停机处理
-		runRpm();     //计算RPM,计算PID,设置运行占空比
-		runThrotLim(fetDutyCycle);//计算得到实际占空比
+		runRpm();     //计算RPM,计算PID,设置运行PWM占空比
+		runThrotLim(fetDutyCycle);//计算得到实际PWM占空比.如果有偏差.那么在这里会实时改变PWM的占空比值
     }
 
 

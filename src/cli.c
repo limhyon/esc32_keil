@@ -49,7 +49,7 @@ static const cliCommand_t cliCommandTable[] = {
 	{"config", "[READ | WRITE | DEFAULT]", cliFuncConfig},//参数表的 读取 写入 恢复模式操作
 
 	{"disarm", "", cliFuncDisarm},                        //停止手动运行模式
-    {"duty", "<percent>", cliFuncDuty},                   //设置占空比
+    {"duty", "<percent>", cliFuncDuty},                   //设置占空比(0~100%,值越高转速越快)
 
 	{"help", "", cliFuncHelp},                            //显示支持的功能命令的帮助信息
     {"input", "[PWM | UART | I2C | CAN]", cliFuncInput},  //设置输入控制模式
@@ -362,7 +362,7 @@ static void cliFuncRpm(void *cmd, char *cmdLine) {
 				runRpmPIDReset();
 				runMode = CLOSED_LOOP_RPM;
 			}
-			targetRpm = target;
+			targetRpm = target;//设置目标转速
 			sprintf(tempBuf, "RPM set to %6.0f\r\n", target);
 			serialPrint(tempBuf);
 		}

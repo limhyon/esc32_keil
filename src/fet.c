@@ -54,8 +54,9 @@
 */
 
 //以下这几个数组只会在fetSetStep函数中用到
-//AH BH CH都是切换gpio,设置为PWM或io模式
+//AH BH CH都是切换gpio的模式,设置为PWM或io模式
 //AL BL CL都是设置gpio的输出电平
+//                       STEP0   STEP1   STEP2   STEP3   STEP4   STEP5   STEP6      对照上面的表格(STEP0不要参与对照)
 static uint32_t AH[7] = {  0,      1,      0,      0,      0,      0,      1};
 static uint32_t AL[7] = {AL_OFF, AL_OFF, AL_OFF, AL_ON,  AL_ON,  AL_OFF, AL_OFF};
 static uint32_t BH[7] = {  0,      0,      0,      0,      1,      1,      0};
@@ -411,6 +412,7 @@ void _fetSetDutyCycle(int32_t dutyCycle) {
 	if (state == ESC_STATE_DISARMED)
 		tmp = 0;
 
+	//改变TIMER4的占空比 当改变duty后.要设置CPU的寄存器.
 	FET_H_TIMER->FET_A_H_CHANNEL = tmp;
 	FET_H_TIMER->FET_B_H_CHANNEL = tmp;
 	FET_H_TIMER->FET_C_H_CHANNEL = tmp;
@@ -425,13 +427,14 @@ void _fetSetDutyCycle(int32_t dutyCycle) {
 		else if (tmp > fetPeriod)
 			tmp = fetPeriod;
 
+		//改变TIMER3的占空比
 		FET_MASTER_TIMER->FET_A_L_CHANNEL = tmp;
 		FET_MASTER_TIMER->FET_B_L_CHANNEL = tmp;
 		FET_MASTER_TIMER->FET_C_L_CHANNEL = tmp;
 	}
 }
 
-//设置fet占空比到变量
+//设置fet占空比到变量(无论使用哪个模式,最后都要通过此函数来设置PWM占空比)
 void fetSetDutyCycle(int32_t requestedDutyCycle) {
 	if (requestedDutyCycle > fetPeriod)
 		requestedDutyCycle = fetPeriod;
@@ -446,7 +449,8 @@ void fetSetDutyCycle(int32_t requestedDutyCycle) {
 // High side FET switching is accomplished by enabling or disabling
 // control of the output pin by the PWM timer.  When disabled, the
 // GPIO output state is imposed on the pin (FET off.)
-// 设置FET下一步
+// 设置FET下一步 正常运行过程中,通过调用这个函数.来不断切换STEP.改变无刷电机运行状态
+// 参数n：代表目前要输出的step
 static void fetSetStep(int n) {
     //__asm volatile ("cpsid i");
 	//CPSID_I();
@@ -456,11 +460,13 @@ static void fetSetStep(int n) {
 	//CPSIE_I();
 	__enable_irq();
 
+	// 下一步
     fetNextStep = n + 1;
     if (fetNextStep > 6)
 		fetNextStep = 1;
 
     // set high side
+	// 通过切换H侧,GPIO和PWM模式,来改变是哪个STEP
     *AH_BITBAND = AH[n];//GPIOB_6
     *BH_BITBAND = BH[n];//GPIOB_7
     *CH_BITBAND = CH[n];//GPIOB_8
@@ -468,7 +474,8 @@ static void fetSetStep(int n) {
     if (fetBrakingEnabled)
 		fetSetBraking(fetBraking);
 
-    // set low side
+    // set low side 
+    // L侧 GPIO切换高低电平
     FET_A_L_PORT->BSRR = AL[n];//GPIOA_7
     FET_B_L_PORT->BSRR = BL[n];//GPIOB_0
     FET_C_L_PORT->BSRR = CL[n];//GPIOB_1
@@ -585,6 +592,7 @@ void fetInit(void) {
 	//配置timer4
 	//中央对齐模式，TIMx_ARR寄存器被装入缓冲器，
 	//CC1、CC2、CC3为输出模式，输出比较预装载使能，PWM模式1
+	// setup HI side
     TIM_OCStructInit(&TIM_OCInitStructure);
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
     TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
@@ -654,6 +662,7 @@ static void fetMissedCommutate(int period) {
 		newPeriod = 0xffff/TIMER_MULT;
     timerSetAlarm2(newPeriod, fetMissedCommutate, period);
 }
+
 //fet 整流 adc中断函数中调用
 void fetCommutate(int period) 
 {
@@ -727,7 +736,9 @@ static void motorStartSeq(int period) {
 	int nextPeriod;
 
 	// Static field to align rotor. Without commutation.
-	if (startSeqCnt < p[START_ALIGN_TIME]) {
+	if (startSeqCnt < p[START_ALIGN_TIME]) 
+	{
+		//先设置了CPU的PWM输出寄存器
 		// PWM ramp up
 		fetStartDuty = p[START_ALIGN_VOLTAGE] * ((float)startSeqCnt / p[START_ALIGN_TIME]) / avgVolts * fetPeriod;
 		fetDutyCycle = fetStartDuty;
@@ -739,7 +750,8 @@ static void motorStartSeq(int period) {
 		timerSetAlarm2(period, motorStartSeq, nextPeriod);
 	}
 	// Rotating field with optional acceleration but without commutation.
-	else if (startSeqCnt < (p[START_ALIGN_TIME] + p[START_STEPS_NUM])) {
+	else if (startSeqCnt < (p[START_ALIGN_TIME] + p[START_STEPS_NUM])) 
+	{
 		// One time if entering "Rotating field"
 		if (startSeqCnt == p[START_ALIGN_TIME])
 			period = p[START_STEPS_PERIOD];

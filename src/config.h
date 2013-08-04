@@ -85,17 +85,20 @@
 
 enum configParameters {
     CONFIG_VERSION = 0,
-    STARTUP_MODE,
-    BAUD_RATE,
-    PTERM,
-    ITERM,
-    FF1TERM,
-    FF2TERM,
-    CL1TERM,
-    CL2TERM,
-    CL3TERM,
-    CL4TERM,
-    CL5TERM,
+    STARTUP_MODE,/* 0==正常的开环模式 1==闭环RPM模式 2==推力闭环模式 */
+    BAUD_RATE,   /* 默认的波特率 */
+
+	PTERM,       /* 转速PI控制,P项 */
+    ITERM,       /* 转速PI控制,I项 */
+
+	FF1TERM,     /*  */
+    FF2TERM,     /**/
+
+	CL1TERM,     /**/
+    CL2TERM,     /**/
+    CL3TERM,     /**/
+    CL4TERM,     /**/
+    CL5TERM,     /**/
     SHUNT_RESISTANCE,
     MIN_PERIOD,
     MAX_PERIOD,
@@ -107,15 +110,17 @@ enum configParameters {
     MAX_CURRENT,
     SWITCH_FREQ,
     MOTOR_POLES,
-    PWM_MIN_PERIOD,
-    PWM_MAX_PERIOD,
-    PWM_MIN_VALUE,
+
+	PWM_MIN_PERIOD,/* PWM输入最小的周期 */
+    PWM_MAX_PERIOD,/* PWM输入最大的周期 */
+    PWM_MIN_VALUE, /*  */
     PWM_LO_VALUE,
     PWM_HI_VALUE,
     PWM_MAX_VALUE,
     PWM_MIN_START,
     PWM_RPM_SCALE,
-    FET_BRAKING,
+
+	FET_BRAKING,   /* 制动模式 0=关闭 1=开启 */
     PNFAC,
     INFAC,
     THR1TERM,
