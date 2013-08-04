@@ -66,14 +66,14 @@ static uint32_t CL[7] = {CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_OFF, CL_ON,  CL_ON};
 
 
 static int32_t fetSwitchFreq;
-static int32_t fetStartDuty;
+static int32_t fetStartDuty;    //在启动过程中.计算出启动那瞬间的PWM占空比
 
-int16_t fetStartDetects;
+int16_t fetStartDetects;        //启动时.要检测到大于此变量的值.电机才算没问题.然后切换到运行状态
 int16_t fetDisarmDetects;
 
 int32_t fetPeriod;              //fet最大的周期
 int32_t fetActualDutyCycle;     //fet实际的占空周期
-volatile int32_t fetDutyCycle;  //fet设置的占空比
+volatile int32_t fetDutyCycle;  //fet设置的占空比 当此变量大于0时.代表电机运转了 等于0代表停止运行
 
 volatile uint8_t fetStep;       //在adc中断函数中,会计算出下一个要运行的电机Step
 static volatile uint8_t fetNextStep;//电机运行的下一个Step, 函数fetSetStep中,会自己指定到下一个Step
@@ -82,11 +82,11 @@ volatile uint32_t fetGoodDetects;    //fet 正确的检测次数
 volatile uint32_t fetBadDetects;     //fet 总共错误的检测次数
 volatile uint32_t fetTotalBadDetects;//fet 总共错误的检测次数
 
-volatile uint32_t fetCommutationMicros;
+volatile uint32_t fetCommutationMicros;//电机换向的时间
 int8_t fetBrakingEnabled;//=1 开启制动模式,允许制动,在参数表中设置
 int8_t fetBraking;       //=1 制动模式 
 static int16_t startSeqCnt;
-static int8_t  startSeqStp;
+static int8_t  startSeqStp; //电机刚启动的时候用到的变量 电机换向变量
 static float fetServoAngle; //电机要运行的目标角度(仅在伺服模式下有效) PID中的设定值
 static float fetServoMaxRate;
 
@@ -167,6 +167,7 @@ void fetUpdateServo(void) {
 		index = ((index + FET_SERVO_RESOLUTION / 3) % FET_SERVO_RESOLUTION);
 		pwm[2] = fetPeriod/2 + fetSine[index] * p[SERVO_DUTY] / 100;
 
+		//设置到CPU寄存器里
 		_fetSetServoDuty(pwm);
 	}
 	else 
@@ -650,7 +651,7 @@ void fetInit(void) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//fet 未接整流
+//fet 未换向
 static void fetMissedCommutate(int period) {
     int32_t newPeriod;
 
@@ -663,7 +664,7 @@ static void fetMissedCommutate(int period) {
     timerSetAlarm2(newPeriod, fetMissedCommutate, period);
 }
 
-//fet 整流 adc中断函数中调用
+//fet 换向 adc中断函数中调用
 void fetCommutate(int period) 
 {
     // keep count of in order ZC detections
@@ -713,12 +714,15 @@ void motorStartSeqInit(void) {
 
 void fetStartCommutation(uint8_t startStep) {
     fetSetBraking(0);
-    fetStartDuty = p[START_VOLTAGE] / avgVolts * fetPeriod;
+//  启动周期     = 启动的电压量     / 电池电压(12V) * PWM脉冲周期
+	fetStartDuty = p[START_VOLTAGE] / avgVolts * fetPeriod;
+
 
 	adcSetCrossingPeriod(adcMaxPeriod/2);
 
 	detectedCrossing = timerMicros;
-    fetDutyCycle = fetStartDuty;
+
+	fetDutyCycle = fetStartDuty;
     _fetSetDutyCycle(fetDutyCycle);
 
 	adcMaxAmps = 0;
@@ -738,8 +742,10 @@ static void motorStartSeq(int period) {
 	// Static field to align rotor. Without commutation.
 	if (startSeqCnt < p[START_ALIGN_TIME]) 
 	{
-		//先设置了CPU的PWM输出寄存器
+		// 这里启动的时候.没有做电机换向
 		// PWM ramp up
+		// 启动周期  =                          (这里是个斜坡) / 电池电压(12V) * 周期
+		// 启动的时候占空比慢慢增加
 		fetStartDuty = p[START_ALIGN_VOLTAGE] * ((float)startSeqCnt / p[START_ALIGN_TIME]) / avgVolts * fetPeriod;
 		fetDutyCycle = fetStartDuty;
 		_fetSetDutyCycle(fetDutyCycle);
@@ -763,6 +769,7 @@ static void motorStartSeq(int period) {
 		fetSetStep(startSeqStp);
 
 		// Set PWM
+		// 运行频率  =                  / 电池电压(12V) * 周期
 		fetStartDuty = p[START_VOLTAGE] / avgVolts * fetPeriod;
 		fetDutyCycle = fetStartDuty;
 		_fetSetDutyCycle(fetDutyCycle);
@@ -842,7 +849,7 @@ void fetTest(void) {
 #endif
 
 void fetSetConstants(void) {
-    float switchFreq = p[SWITCH_FREQ];
+    float switchFreq = p[SWITCH_FREQ];             //PWM周期 默认20Khz
     float startVoltage = p[START_VOLTAGE];
     float startDetects = p[GOOD_DETECTS_START];
     float disarmDetects = p[BAD_DETECTS_DISARM];
@@ -878,7 +885,8 @@ void fetSetConstants(void) {
     if (servoMaxRate <= 0.0f)
 		servoMaxRate = 360.0f;
 
-    fetSwitchFreq = switchFreq * 1000 * 2;
+	//计算CPU定时器寄存器分频.
+    fetSwitchFreq = switchFreq * 1000 * 2;      // 设定的频率*1000 转换为KHz 
     fetPeriod = FET_AHB_FREQ/fetSwitchFreq;     // bus speed / switching frequency - depends on fetSwitchFreq
     fetSetBaseTime(fetPeriod);
 

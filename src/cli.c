@@ -460,13 +460,13 @@ static void cliFuncStatus(void *cmd, char *cmdLine) {
     sprintf(tempBuf, formatFloat, "FET DUTY", duty*100.0f);                //fet实际占空比
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "RPM", rpm);
+    sprintf(tempBuf, formatFloat, "RPM", rpm);                             //电机运行时候的转速
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "AMPS AVG", avgAmps);
+    sprintf(tempBuf, formatFloat, "AMPS AVG", avgAmps);                    //平均电流(单位安培)
     serialPrint(tempBuf);
 
-    sprintf(tempBuf, formatFloat, "AMPS MAX", maxAmps);
+    sprintf(tempBuf, formatFloat, "AMPS MAX", maxAmps);                    //最大电流(单位安培)
     serialPrint(tempBuf);
 
     sprintf(tempBuf, formatFloat, "BAT VOLTS", avgVolts);                  //电池电压

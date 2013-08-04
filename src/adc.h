@@ -43,7 +43,7 @@
 
 #define ADC_VOLTS_PRECISION	16
 #define ADC_VOLTS_SLOPE		((10.0f + 1.5f) / 1.5f)    // Rtop = 10K, Rbot = 1.5K
-#define ADC_TO_VOLTS		(ADC_TO_VOLTAGE * ADC_VOLTS_SLOPE / ((1<<(ADC_VOLTS_PRECISION))+1))
+#define ADC_TO_VOLTS		(ADC_TO_VOLTAGE * ADC_VOLTS_SLOPE / ((1<<(ADC_VOLTS_PRECISION))+1))  //ADC的采样值 到电压的转换基本公式
 
 #define ADC_MIN_SHUNT		0.05	    // milli Ohms
 #define ADC_MAX_SHUNT		1.0	    // milli Ohms

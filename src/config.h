@@ -99,24 +99,24 @@ enum configParameters {
     CL3TERM,     /**/
     CL4TERM,     /**/
     CL5TERM,     /**/
-    SHUNT_RESISTANCE,
-    MIN_PERIOD,
-    MAX_PERIOD,
-    BLANKING_MICROS,
-    ADVANCE,
-    START_VOLTAGE,
-    GOOD_DETECTS_START,
-    BAD_DETECTS_DISARM,
-    MAX_CURRENT,
-    SWITCH_FREQ,
-    MOTOR_POLES,
+    SHUNT_RESISTANCE, /* 蛇形分流电阻值 */
+    MIN_PERIOD,    /* 最小的换向周期 */
+    MAX_PERIOD,    /* 最大的换向周期 */
+    BLANKING_MICROS,/* 反电动势 */
+    ADVANCE,       /* 提前多少角度测量换向 */
+    START_VOLTAGE, /* 启动电压值,启动过程中.根据此值计算出启动的PWM周期 */
+    GOOD_DETECTS_START, /* 电机在启动状态时,要有多少个好的检测,才认为电机是正常的 */
+    BAD_DETECTS_DISARM, /* 运行过程中.检测到错误的状态后.会停止电机运行 */
+    MAX_CURRENT,   /* 最大的电流 */
+    SWITCH_FREQ,   /* PWM周期 单位是KHz 默认20KHz */
+    MOTOR_POLES,   /* 电机使用多少对磁 */
 
-	PWM_MIN_PERIOD,/* PWM输入最小的周期 */
+	PWM_MIN_PERIOD,/* PWM输入最小的周期 在最小周期到最大周期内输入的频率是有效的 */
     PWM_MAX_PERIOD,/* PWM输入最大的周期 */
-    PWM_MIN_VALUE, /*  */
+    PWM_MIN_VALUE, /* PWM输入最小的高电平时间(脉宽长度) */
     PWM_LO_VALUE,
     PWM_HI_VALUE,
-    PWM_MAX_VALUE,
+    PWM_MAX_VALUE, /* PWM输如最大的高电平时间(脉宽长度) */
     PWM_MIN_START,
     PWM_RPM_SCALE,
 

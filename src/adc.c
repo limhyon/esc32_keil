@@ -38,7 +38,7 @@
 	static uint32_t adcRawData[ADC_CHANNELS*2];
 #endif
 
-float adcToAmps;
+float adcToAmps;    //ADC的电流测量值 转换成 实际的电流公式
 static int16_t adcAdvance;
 static int32_t adcblankingMicros;
 int32_t adcMaxPeriod;//ADC最大的周期
@@ -52,7 +52,7 @@ static uint16_t histB[ADC_HIST_SIZE];
 static uint16_t histC[ADC_HIST_SIZE];
 
 uint32_t avgA, avgB, avgC;    //电机A B C相的电压ADC采集.平均值
-int32_t adcAmpsOffset;        //当前ADC采集转换后的 传感器电流 电流偏移
+int32_t adcAmpsOffset;        //当前ADC采集转换后的 传感器电流 电流偏移 (在停止运行模式下,电流的值.做偏移值)
 volatile int32_t adcAvgAmps;  //当前ADC采集转换后的 传感器电流
 volatile int32_t adcMaxAmps;  //运行中最大 传感器电流
 volatile int32_t adcAvgVolts; //运行的电压
@@ -314,7 +314,7 @@ void DMA1_Channel1_IRQHandler(void)
 	// blanking time after commutation
 	if (!fetCommutationMicros || 
 		((currentMicros >= fetCommutationMicros) ? (currentMicros - fetCommutationMicros) : (TIMER_MASK - fetCommutationMicros + currentMicros)) > adcblankingMicros
-		// 当前的时间 >= fet换向的时间 ?  当前时间-fet换向的时间  :     (0xFFFFffff-fet换向的时间+当前时间) > adcblankingMicros
+		// 当前的时间 >= fet换向的时间 ?            当前时间-fet换向的时间  :     (0xFFFFffff-fet换向的时间+当前时间) > adcblankingMicros(反电动势)
 		) 
 	{
 #ifdef ADC_FAST_SAMPLE
@@ -396,8 +396,8 @@ void DMA1_Channel1_IRQHandler(void)
 					//		    crossingPeriod = (crossingPeriod*15 + periodMicros)/16;
 
 					// schedule next commutation
-					fetStep = nextStep;   //切换到下一个换向
-					fetCommutationMicros = 0;
+					fetStep = nextStep;       //切换到下一个换向
+					fetCommutationMicros = 0; //电机换向的时间清零
 					timerSetAlarm1(crossingPeriod/2 - (ADC_DETECTION_TIME*(histSize+2))/2 - ADC_COMMUTATION_ADVANCE, fetCommutate, crossingPeriod);
 
 					// record crossing time

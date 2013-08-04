@@ -35,8 +35,8 @@
 uint32_t runMilis;   //systick中断中自加.没有什么控制用途
 static uint32_t oldIdleCounter;  //上次main函数中,死循环次数.
 float idlePercent;   //空闲时间百分比(在main循环里,什么事情也不做.main死循环运行的时间)
-float avgAmps, maxAmps;
-float avgVolts;      //当前ADC采集转换后的电池电压
+float avgAmps, maxAmps; //平均电流, 最大电流
+float avgVolts;      //当前ADC采集转换后的电池电压(也就是12v)
 
 float rpm;           //当前转速(1分钟多少转) 测量值 在runRpm函数中计算出来.在runThrotLim中还要继续使用.
 float targetRpm;     //目标转速 设定值(只在闭环 或 闭环推力模式下使用此变量)
@@ -149,14 +149,14 @@ void runArm(void) {
 //电机开始运行
 void runStart(void) {
 	// reset integral bevore new motor startup
-	runRpmPIDReset();
+	runRpmPIDReset();//先复位I值
 
 	if ((p[START_ALIGN_TIME] == 0) && (p[START_STEPS_NUM] == 0)) {
 		state = ESC_STATE_STARTING;  //设置为准备启动状态
-		fetStartCommutation(0);
+		fetStartCommutation(0);//换向启动
 	}
 	else {
-		motorStartSeqInit();
+		motorStartSeqInit();//普通启动
 	}
 }
 
@@ -274,7 +274,7 @@ static void runWatchDog(void)
 	//CPSIE_I();
 	__enable_irq();
 
-	if (state == ESC_STATE_STARTING && fetGoodDetects > fetStartDetects) 
+	if (state == ESC_STATE_STARTING && fetGoodDetects > fetStartDetects) //这里要检测到fetStartDetects好的检测,才允许切换电机状态
 	{
 		//是启动状态.切换到 运行状态
 		state = ESC_STATE_RUNNING;
@@ -308,8 +308,9 @@ static void runWatchDog(void)
 				pwmIsrRunOn();//PWM开启输入比较
 			}
 		}
-		else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects) 
+		else if (state >= ESC_STATE_STARTING && fetBadDetects > fetDisarmDetects)  //运行状态中  检测到错误的个数后.进入这个判断
 		{
+			//在运行过程中,出现错误.停止运行
 			if (fetDutyCycle > 0)
 				runDisarm(REASON_BAD_DETECTS);//错误停止
 		}
@@ -413,6 +414,7 @@ static uint8_t runRpm(void)
 	}
 	else 
 	{
+		//电机在停止状态下
 		rpm = 0.0f;
 		return 0;
     }
@@ -447,7 +449,7 @@ static void runSetupPVD(void) {
 void runInit(void) {
     runSetupPVD();
     runSetConstants();
-    runMode = p[STARTUP_MODE];
+    runMode = p[STARTUP_MODE];//启动 运行模式
 
 	//系统tickcount时钟
     SysTick_Config(SystemCoreClock / 1000); // 1ms
@@ -491,8 +493,8 @@ static int32_t runCurrentPID(int32_t duty) {
 //参数duty:实际上就是fetDutyCycle传递进来的.想要运行的周期
 static void runThrotLim(int32_t duty) 
 {
-	float maxVolts;
-	int32_t maxDuty;
+	float maxVolts; //最大的电压
+	int32_t maxDuty;//最大的周期
 
 	// only if a limit is set
 	if (p[MAX_CURRENT] > 0.0f) 
@@ -533,9 +535,9 @@ void SysTick_Handler(void) {
     runFeedIWDG();
 
 
-    avgVolts = adcAvgVolts * ADC_TO_VOLTS;                     //转换后的电池电压 = ADC采集电压原始值 * 电压算法
-    avgAmps = (adcAvgAmps - adcAmpsOffset) * adcToAmps;
-    maxAmps = (adcMaxAmps - adcAmpsOffset) * adcToAmps;
+    avgVolts = adcAvgVolts * ADC_TO_VOLTS;                     //转换后的电池电压(一般是12V) = ADC采集电压原始值 * 电压算法
+    avgAmps = (adcAvgAmps - adcAmpsOffset) * adcToAmps;        //平均电流 = (当前电流 - 停止时候的电流) * 转换公式
+    maxAmps = (adcMaxAmps - adcAmpsOffset) * adcToAmps;        //最大电流 = (最大电流 - 停止时候的电流) * 转换公式
 
 
     if (runMode == SERVO_MODE) 

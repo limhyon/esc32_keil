@@ -127,8 +127,8 @@ void PWM_IRQ_HANDLER(void) {
 
 	edge = !(PWM_TIM->SR & TIM_IT_CC2);
 
-	periodValue = PWM_TIM->CCR1; //IO 输入PA8
-	pwmValue = PWM_TIM->CCR2;    //IO 输入(但是没有看到配置了使用哪个IO做为输入了)
+	periodValue = PWM_TIM->CCR1; //IO 输入PA8  周期
+	pwmValue = PWM_TIM->CCR2;    //IO 输入(但是没有看到配置了使用哪个IO做为输入了)  脉宽长度
 
 	// is this an OW reset pulse?
 	if (state == ESC_STATE_DISARMED && 
@@ -140,8 +140,8 @@ void PWM_IRQ_HANDLER(void) {
 	}
 	// look for good RC PWM input
 	else if (inputMode == ESC_INPUT_PWM &&  //PWM输入模式
-			periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod && 
-			pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue
+			periodValue >= pwmMinPeriod && periodValue <= pwmMaxPeriod &&  //pa8输入的周期范围
+			pwmValue >= pwmMinValue && pwmValue <= pwmMaxValue             //脉宽长度
 			)
 	{
 		if (edge == 0) {
